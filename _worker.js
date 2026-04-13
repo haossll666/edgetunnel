@@ -1,8 +1,3 @@
-// 强制转发订阅到你的 sub 项目（硬编码）
-if (request.url.includes("/auto") || request.url.includes("/sub") || request.url.includes("?sub")) {
-  const subUrl = "https://sub2026.haossll666.workers.dev/auto" + new URL(request.url).search;
-  return fetch(subUrl, request);
-}
 const Version = '2026-04-10 06:03:17';
 /*In our project workflow, we first*/ import //the necessary modules, 
 /*then*/ { connect }//to the central server, 
