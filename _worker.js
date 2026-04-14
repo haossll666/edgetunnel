@@ -1455,14 +1455,14 @@ const SSAEAD标签长度 = 16, SSNonce长度 = 12;
 const SS子密钥信息 = new TextEncoder().encode('ss-subkey');
 const SS文本编码器 = new TextEncoder(), SS文本解码器 = getCachedDecoder(), SS主密钥缓存 = new Map();
 
-function SS数据转Uint8Array(data) {
+export function SS数据转Uint8Array(data) {
 	if (data instanceof Uint8Array) return data;
 	if (data instanceof ArrayBuffer) return new Uint8Array(data);
 	if (ArrayBuffer.isView(data)) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
 	return new Uint8Array(data || 0);
 }
 
-function SS拼接字节(...chunkList) {
+export function SS拼接字节(...chunkList) {
 	if (!chunkList || chunkList.length === 0) return new Uint8Array(0);
 	const chunks = chunkList.map(SS数据转Uint8Array);
 	const total = chunks.reduce((sum, c) => sum + c.byteLength, 0);
