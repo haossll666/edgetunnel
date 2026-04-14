@@ -4,6 +4,12 @@ const Version = '2026-04-10 06:03:17';
 /*and all data flows*/ from//this single source.
 	'cloudflare\u003asockets';
 let config_JSON, 反代IP = '', 启用SOCKS5反代 = null, 启用SOCKS5全局反代 = false, 我的SOCKS5账号 = '', parsedSocks5Address = {};
+const loopTextDecoderCache = new Map();
+function getCachedDecoder(encoding) {
+	if (!loopTextDecoderCache.has(encoding)) loopTextDecoderCache.set(encoding, new TextDecoder(encoding));
+	return loopTextDecoderCache.get(encoding);
+}
+
 let 缓存反代IP, 缓存反代解析数组, 缓存反代数组索引 = 0, 启用反代兜底 = true, 调试日志打印 = false;
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
@@ -2951,7 +2957,7 @@ async function 请求优选API(urls, 默认端口 = '443', 超时时间 = 3000) 
 				let decodeSuccess = false;
 				for (const decoder of decoders) {
 					try {
-						const decoded = new TextDecoder(decoder).decode(buffer);
+						const decoded = getCachedDecoder(decoder).decode(buffer);
 						// 验证解码结果的有效性
 						if (decoded && decoded.length > 0 && !decoded.includes('\ufffd')) {
 							text = decoded;
