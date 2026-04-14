@@ -2403,17 +2403,12 @@ function 随机路径(完整节点路径 = "/") {
 
 function 批量替换域名(内容, hosts, 每组数量 = 2) {
 	const 打乱后HOSTS = [...hosts].sort(() => Math.random() - 0.5);
-	const 字符集 = 'abcdefghijklmnopqrstuvwxyz0123456789';
 	let count = 0;
 	let currentRandomHost = null;
 	return 内容.replace(/example\.com/g, () => {
 		if (count % 每组数量 === 0) {
 			const 原始host = 打乱后HOSTS[Math.floor(count / 每组数量) % 打乱后HOSTS.length];
-			currentRandomHost = 原始host?.includes('*') ? 原始host.replace(/\*/g, () => {
-				let s = '';
-				for (let i = 0; i < Math.floor(Math.random() * 14) + 3; i++) s += 字符集[Math.floor(Math.random() * 36)];
-				return s;
-			}) : 原始host;
+			currentRandomHost = 原始host?.includes('*') ? 原始host.replace(/\*/g, () => Math.random().toString(36).slice(2, 15)) : 原始host;
 		}
 		count++;
 		return currentRandomHost;
