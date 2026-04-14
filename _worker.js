@@ -19,7 +19,7 @@ export default {
 		const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 		const envUUID = env.UUID || env.uuid;
 		const userID = (envUUID && uuidRegex.test(envUUID)) ? envUUID.toLowerCase() : [userIDMD5.slice(0, 8), userIDMD5.slice(8, 12), '4' + userIDMD5.slice(13, 16), '8' + userIDMD5.slice(17, 20), userIDMD5.slice(20)].join('-');
-		const hosts = env.HOST ? (await 整理成数组(env.HOST)).map(h => h.toLowerCase().replace(/^https?:\/\//, '').split('/')[0].split(':')[0]) : [url.hostname];
+		const hosts = env.HOST ? (await 整理成数组(env.HOST)).map(h => { const m = h.match(/^(?:https?:\/\/)?([^/:]+)/i); return (m ? m[1] : h).toLowerCase(); }) : [url.hostname];
 		const host = hosts[0];
 		const 访问路径 = url.pathname.slice(1).toLowerCase();
 		调试日志打印 = ['1', 'true'].includes(env.DEBUG) || 调试日志打印;
@@ -2685,7 +2685,7 @@ async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重�
 	if (!config_JSON.gRPCUserAgent) config_JSON.gRPCUserAgent = UA;
 	config_JSON.HOST = host;
 	if (!config_JSON.HOSTS) config_JSON.HOSTS = [hostname];
-	if (env.HOST) config_JSON.HOSTS = (await 整理成数组(env.HOST)).map(h => h.toLowerCase().replace(/^https?:\/\//, '').split('/')[0].split(':')[0]);
+	if (env.HOST) config_JSON.HOSTS = (await 整理成数组(env.HOST)).map(h => { const m = h.match(/^(?:https?:\/\/)?([^/:]+)/i); return (m ? m[1] : h).toLowerCase(); });
 	config_JSON.UUID = userID;
 	if (!config_JSON.随机路径) config_JSON.随机路径 = false;
 	if (!config_JSON.启用0RTT) config_JSON.启用0RTT = false;
