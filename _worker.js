@@ -1769,12 +1769,47 @@ function isSpeedTestSite(hostname) {
 }
 
 function 修正请求URL(url文本) {
-	url文本 = url文本.replace(/%5[Cc]/g, '').replace(/\\/g, '');
-	const 锚点索引 = url文本.indexOf('#');
-	const 主体部分 = 锚点索引 === -1 ? url文本 : url文本.slice(0, 锚点索引);
-	if (主体部分.includes('?') || !/%3f/i.test(主体部分)) return url文本;
-	const 锚点部分 = 锚点索引 === -1 ? '' : url文本.slice(锚点索引);
-	return 主体部分.replace(/%3f/i, '?') + 锚点部分;
+	let hasBackslash = false;
+	let backslashIdx = url文本.indexOf('\\');
+	if (backslashIdx === -1) {
+		backslashIdx = url文本.indexOf('%5C');
+		if (backslashIdx === -1) {
+			backslashIdx = url文本.indexOf('%5c');
+			if (backslashIdx !== -1) hasBackslash = true;
+		} else {
+			hasBackslash = true;
+		}
+	} else {
+		hasBackslash = true;
+	}
+
+	if (hasBackslash) {
+		url文本 = url文本.replace(/%5[Cc]|\\/gi, '');
+	}
+
+	let fIdx = url文本.indexOf('%3f');
+	if (fIdx === -1) {
+		fIdx = url文本.indexOf('%3F');
+		if (fIdx === -1) return url文本;
+	} else {
+		let fIdx2 = url文本.indexOf('%3F');
+		if (fIdx2 !== -1 && fIdx2 < fIdx) {
+			fIdx = fIdx2;
+		}
+	}
+
+	let searchIdx = url文本.indexOf('?');
+	let hashIdx = url文本.indexOf('#');
+
+	if (searchIdx !== -1 && (hashIdx === -1 || searchIdx < hashIdx)) {
+		return url文本;
+	}
+
+	if (hashIdx !== -1 && fIdx > hashIdx) {
+		return url文本;
+	}
+
+	return url文本.slice(0, fIdx) + '?' + url文本.slice(fIdx + 3);
 }
 ///////////////////////////////////////////////////////SOCKS5/HTTP函数///////////////////////////////////////////////
 async function socks5Connect(targetHost, targetPort, initialData) {
