@@ -56,12 +56,12 @@ export default {
 				const 区分大小写访问路径 = url.pathname.slice(1);
 				if (区分大小写访问路径 === 加密秘钥) {//快速订阅
 					const params = new URLSearchParams(url.search);
-					params.set('token', await MD5MD5(host + userID));
+					params.set('token', await safeHash(host + userID));
 					return new Response('重定向中...', { status: 302, headers: { 'Location': `/sub?${params.toString()}` } });
 				} else if (访问路径 === 'login') {//处理登录页面和登录请求
 					const cookies = request.headers.get('Cookie') || '';
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
-					if (authCookie == await MD5MD5(UA + 加密秘钥 + 管理员密码)) return new Response('重定向中...', { status: 302, headers: { 'Location': '/admin' } });
+					if (authCookie == await safeHash(UA + 加密秘钥 + 管理员密码)) return new Response('重定向中...', { status: 302, headers: { 'Location': '/admin' } });
 					if (request.method === 'POST') {
 						const formData = await request.text();
 						const params = new URLSearchParams(formData);
@@ -69,7 +69,7 @@ export default {
 						if (输入密码 === 管理员密码) {
 							// 密码正确，设置cookie并返回成功标记
 							const 响应 = new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-							响应.headers.set('Set-Cookie', `auth=${await MD5MD5(UA + 加密秘钥 + 管理员密码)}; Path=/; Max-Age=86400; HttpOnly`);
+							响应.headers.set('Set-Cookie', `auth=${await safeHash(UA + 加密秘钥 + 管理员密码)}; Path=/; Max-Age=86400; HttpOnly`);
 							return 响应;
 						}
 					}
@@ -78,7 +78,7 @@ export default {
 					const cookies = request.headers.get('Cookie') || '';
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
 					// 没有cookie或cookie错误，跳转到/login页面
-					if (!authCookie || authCookie !== await MD5MD5(UA + 加密秘钥 + 管理员密码)) return new Response('重定向中...', { status: 302, headers: { 'Location': '/login' } });
+					if (!authCookie || authCookie !== await safeHash(UA + 加密秘钥 + 管理员密码)) return new Response('重定向中...', { status: 302, headers: { 'Location': '/login' } });
 					if (访问路径 === 'admin/log.json') {// 读取日志内容
 						const 读取日志内容 = await env.KV.get('log.json') || '[]';
 						return new Response(读取日志内容, { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
@@ -216,7 +216,7 @@ export default {
 					响应.headers.set('Set-Cookie', 'auth=; Path=/; Max-Age=0; HttpOnly');
 					return 响应;
 				} else if (访问路径 === 'sub') {//处理订阅请求
-					const 订阅TOKEN = await MD5MD5(host + userID), 作为优选订阅生成器 = ['1', 'true'].includes(env.BEST_SUB) && url.searchParams.get('host') === 'example.com' && url.searchParams.get('uuid') === '00000000-0000-4000-8000-000000000000' && UA.toLowerCase().includes('tunnel (https://github.com/cmliu/edge');
+					const 订阅TOKEN = await safeHash(host + userID), 作为优选订阅生成器 = ['1', 'true'].includes(env.BEST_SUB) && url.searchParams.get('host') === 'example.com' && url.searchParams.get('uuid') === '00000000-0000-4000-8000-000000000000' && UA.toLowerCase().includes('tunnel (https://github.com/cmliu/edge');
 					if (url.searchParams.get('token') === 订阅TOKEN || 作为优选订阅生成器) {
 						config_JSON = await 读取config_JSON(env, host, userID, UA);
 						if (作为优选订阅生成器) ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Get_Best_SUB', config_JSON, false));
@@ -373,7 +373,7 @@ export default {
 				} else if (访问路径 === 'locations') {//反代locations列表
 					const cookies = request.headers.get('Cookie') || '';
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
-					if (authCookie && authCookie == await MD5MD5(UA + 加密秘钥 + 管理员密码)) return fetch(new Request('https://speed.cloudflare.com/locations', { headers: { 'Referer': 'https://speed.cloudflare.com/' } }));
+					if (authCookie && authCookie == await safeHash(UA + 加密秘钥 + 管理员密码)) return fetch(new Request('https://speed.cloudflare.com/locations', { headers: { 'Referer': 'https://speed.cloudflare.com/' } }));
 				} else if (访问路径 === 'robots.txt') return new Response('User-agent: *\nDisallow: /', { status: 200, headers: { 'Content-Type': 'text/plain; charset=UTF-8' } });
 			} else if (!envUUID) return fetch(Pages静态页面 + '/noKV').then(r => { const headers = new Headers(r.headers); headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate'); headers.set('Pragma', 'no-cache'); headers.set('Expires', '0'); return new Response(r.body, { status: 404, statusText: r.statusText, headers }) });
 		}
@@ -392,7 +392,10 @@ export default {
 			新请求头.set('Referer', 反代URL.origin);
 			新请求头.set('Origin', 反代URL.origin);
 			if (!新请求头.has('User-Agent') && UA && UA !== 'null') 新请求头.set('User-Agent', UA);
-			const 反代响应 = await fetch(反代URL.origin + url.pathname + url.search, { method: request.method, headers: 新请求头, body: request.body, cf: request.cf });
+			const 实际反代URL = new URL(反代URL.href);
+			实际反代URL.pathname = url.pathname;
+			实际反代URL.search = url.search;
+			const 反代响应 = await fetch(实际反代URL.href, { method: request.method, headers: 新请求头, body: request.body, cf: request.cf });
 			const 内容类型 = 反代响应.headers.get('content-type') || '';
 			// 只处理文本类型的响应
 			if (/text|javascript|json|xml/.test(内容类型)) {
@@ -713,7 +716,6 @@ async function 处理gRPC请求(request, yourUUID) {
 	let 判断是否是木马 = null;
 	let 当前写入Socket = null;
 	let 远端写入器 = null;
-	//log('[gRPC] 开始处理双向流');
 	const grpcHeaders = new Headers({
 		'Content-Type': 'application/grpc',
 		'grpc-status': '0',
@@ -886,14 +888,12 @@ async function 处理gRPC请求(request, yourUUID) {
 								const 解析结果 = 解析木马请求(首包buffer, yourUUID);
 								if (解析结果?.hasError) throw new Error(解析结果.message || 'Invalid trojan request');
 								const { port, hostname, rawClientData } = 解析结果;
-								//log(`[gRPC] 木马首包: ${hostname}:${port}`);
 								if (isSpeedTestSite(hostname)) throw new Error('Speedtest site is blocked');
 								await forwardataTCP(hostname, port, rawClientData, grpcBridge, null, remoteConnWrapper, yourUUID);
 							} else {
 								const 解析结果 = 解析魏烈思请求(首包buffer, yourUUID);
 								if (解析结果?.hasError) throw new Error(解析结果.message || 'Invalid vless request');
 								const { port, hostname, rawIndex, version, isUDP } = 解析结果;
-								//log(`[gRPC] 魏烈思首包: ${hostname}:${port} | UDP: ${isUDP ? '是' : '否'}`);
 								if (isSpeedTestSite(hostname)) throw new Error('Speedtest site is blocked');
 								if (isUDP) {
 									if (port !== 53) throw new Error('UDP is not supported');
@@ -1233,6 +1233,7 @@ async function 处理WS请求(request, yourUUID, url) {
 			}
 			const 明文数据 = SS数据转Uint8Array(明文块);
 			if (明文数据.byteLength < 3) throw new Error('invalid ss data');
+			const view = new DataView(明文数据.buffer, 明文数据.byteOffset, 明文数据.byteLength);
 			const addressType = 明文数据[0];
 			let cursor = 1;
 			let hostname = '';
@@ -1250,8 +1251,7 @@ async function 处理WS请求(request, yourUUID, url) {
 			} else if (addressType === 4) {
 				if (明文数据.byteLength < cursor + 16 + 2) throw new Error('invalid ss ipv6 length');
 				const ipv6 = [];
-				const ipv6View = new DataView(明文数据.buffer, 明文数据.byteOffset + cursor, 16);
-				for (let i = 0; i < 8; i++) ipv6.push(ipv6View.getUint16(i * 2).toString(16));
+				for (let i = 0; i < 8; i++) ipv6.push(view.getUint16(cursor + i * 2).toString(16));
 				hostname = ipv6.join(':');
 				cursor += 16;
 			} else {
@@ -1334,40 +1334,40 @@ async function 处理WS请求(request, yourUUID, url) {
 }
 
 function 解析木马请求(buffer, passwordPlainText) {
+	const uint8 = new Uint8Array(buffer);
 	const sha224Password = sha224(passwordPlainText);
-	if (buffer.byteLength < 56) return { hasError: true, message: "invalid data" };
+	if (uint8.byteLength < 56) return { hasError: true, message: "invalid data" };
 	let crLfIndex = 56;
-	if (new Uint8Array(buffer.slice(56, 57))[0] !== 0x0d || new Uint8Array(buffer.slice(57, 58))[0] !== 0x0a) return { hasError: true, message: "invalid header format" };
-	const password = new TextDecoder().decode(buffer.slice(0, crLfIndex));
+	if (uint8[56] !== 0x0d || uint8[57] !== 0x0a) return { hasError: true, message: "invalid header format" };
+	const password = new TextDecoder().decode(uint8.subarray(0, crLfIndex));
 	if (password !== sha224Password) return { hasError: true, message: "invalid password" };
 
-	const socks5DataBuffer = buffer.slice(crLfIndex + 2);
-	if (socks5DataBuffer.byteLength < 6) return { hasError: true, message: "invalid S5 request data" };
+	const socks5DataOffset = crLfIndex + 2;
+	if (uint8.byteLength < socks5DataOffset + 6) return { hasError: true, message: "invalid S5 request data" };
 
-	const view = new DataView(socks5DataBuffer);
-	const cmd = view.getUint8(0);
+	const view = new DataView(uint8.buffer, uint8.byteOffset, uint8.byteLength);
+	const cmd = uint8[socks5DataOffset];
 	if (cmd !== 1) return { hasError: true, message: "unsupported command, only TCP is allowed" };
 
-	const atype = view.getUint8(1);
+	const atype = uint8[socks5DataOffset + 1];
 	let addressLength = 0;
-	let addressIndex = 2;
+	let addressIndex = socks5DataOffset + 2;
 	let address = "";
 	switch (atype) {
 		case 1: // IPv4
 			addressLength = 4;
-			address = new Uint8Array(socks5DataBuffer.slice(addressIndex, addressIndex + addressLength)).join(".");
+			address = uint8.subarray(addressIndex, addressIndex + addressLength).join(".");
 			break;
 		case 3: // Domain
-			addressLength = new Uint8Array(socks5DataBuffer.slice(addressIndex, addressIndex + 1))[0];
+			addressLength = uint8[addressIndex];
 			addressIndex += 1;
-			address = new TextDecoder().decode(socks5DataBuffer.slice(addressIndex, addressIndex + addressLength));
+			address = new TextDecoder().decode(uint8.subarray(addressIndex, addressIndex + addressLength));
 			break;
 		case 4: // IPv6
 			addressLength = 16;
-			const dataView = new DataView(socks5DataBuffer.slice(addressIndex, addressIndex + addressLength));
 			const ipv6 = [];
 			for (let i = 0; i < 8; i++) {
-				ipv6.push(dataView.getUint16(i * 2).toString(16));
+				ipv6.push(view.getUint16(addressIndex + i * 2).toString(16));
 			}
 			address = ipv6.join(":");
 			break;
@@ -1380,45 +1380,46 @@ function 解析木马请求(buffer, passwordPlainText) {
 	}
 
 	const portIndex = addressIndex + addressLength;
-	const portBuffer = socks5DataBuffer.slice(portIndex, portIndex + 2);
-	const portRemote = new DataView(portBuffer).getUint16(0);
+	const portRemote = view.getUint16(portIndex);
 
 	return {
 		hasError: false,
 		addressType: atype,
 		port: portRemote,
 		hostname: address,
-		rawClientData: socks5DataBuffer.slice(portIndex + 4)
+		rawClientData: uint8.subarray(portIndex + 4)
 	};
 }
 
 function 解析魏烈思请求(chunk, token) {
-	if (chunk.byteLength < 24) return { hasError: true, message: 'Invalid data' };
-	const version = new Uint8Array(chunk.slice(0, 1));
-	if (formatIdentifier(new Uint8Array(chunk.slice(1, 17))) !== token) return { hasError: true, message: 'Invalid uuid' };
-	const optLen = new Uint8Array(chunk.slice(17, 18))[0];
-	const cmd = new Uint8Array(chunk.slice(18 + optLen, 19 + optLen))[0];
+	const uint8 = new Uint8Array(chunk);
+	if (uint8.byteLength < 24) return { hasError: true, message: 'Invalid data' };
+	const view = new DataView(uint8.buffer, uint8.byteOffset, uint8.byteLength);
+
+	const version = uint8.subarray(0, 1);
+	if (formatIdentifier(uint8, 1) !== token) return { hasError: true, message: 'Invalid uuid' };
+	const optLen = uint8[17];
+	const cmd = uint8[18 + optLen];
 	let isUDP = false;
 	if (cmd === 1) { } else if (cmd === 2) { isUDP = true } else { return { hasError: true, message: 'Invalid command' } }
 	const portIdx = 19 + optLen;
-	const port = new DataView(chunk.slice(portIdx, portIdx + 2)).getUint16(0);
+	const port = view.getUint16(portIdx);
 	let addrIdx = portIdx + 2, addrLen = 0, addrValIdx = addrIdx + 1, hostname = '';
-	const addressType = new Uint8Array(chunk.slice(addrIdx, addrValIdx))[0];
+	const addressType = uint8[addrIdx];
 	switch (addressType) {
 		case 1:
 			addrLen = 4;
-			hostname = new Uint8Array(chunk.slice(addrValIdx, addrValIdx + addrLen)).join('.');
+			hostname = uint8.subarray(addrValIdx, addrValIdx + addrLen).join('.');
 			break;
 		case 2:
-			addrLen = new Uint8Array(chunk.slice(addrValIdx, addrValIdx + 1))[0];
+			addrLen = uint8[addrValIdx];
 			addrValIdx += 1;
-			hostname = new TextDecoder().decode(chunk.slice(addrValIdx, addrValIdx + addrLen));
+			hostname = new TextDecoder().decode(uint8.subarray(addrValIdx, addrValIdx + addrLen));
 			break;
 		case 3:
 			addrLen = 16;
 			const ipv6 = [];
-			const ipv6View = new DataView(chunk.slice(addrValIdx, addrValIdx + addrLen));
-			for (let i = 0; i < 8; i++) ipv6.push(ipv6View.getUint16(i * 2).toString(16));
+			for (let i = 0; i < 8; i++) ipv6.push(view.getUint16(addrValIdx + i * 2).toString(16));
 			hostname = ipv6.join(':');
 			break;
 		default:
@@ -1436,6 +1437,15 @@ const SS支持加密配置 = {
 const SSAEAD标签长度 = 16, SSNonce长度 = 12;
 const SS子密钥信息 = new TextEncoder().encode('ss-subkey');
 const SS文本编码器 = new TextEncoder(), SS文本解码器 = new TextDecoder(), SS主密钥缓存 = new Map();
+const globalTextDecoders = new Map();
+function getGlobalTextDecoder(encoding) {
+	let decoder = globalTextDecoders.get(encoding);
+	if (!decoder) {
+		decoder = new TextDecoder(encoding);
+		globalTextDecoders.set(encoding, decoder);
+	}
+	return decoder;
+}
 
 function SS数据转Uint8Array(data) {
 	if (data instanceof Uint8Array) return data;
@@ -1664,7 +1674,10 @@ function closeSocketQuietly(socket) {
 }
 
 function formatIdentifier(arr, offset = 0) {
-	const hex = [...arr.slice(offset, offset + 16)].map(b => b.toString(16).padStart(2, '0')).join('');
+	let hex = '';
+	for (let i = 0; i < 16; i++) {
+		hex += arr[offset + i].toString(16).padStart(2, '0');
+	}
 	return `${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}`;
 }
 
@@ -1773,11 +1786,21 @@ function isSpeedTestSite(hostname) {
 
 function 修正请求URL(url文本) {
 	url文本 = url文本.replace(/%5[Cc]/g, '').replace(/\\/g, '');
-	const 锚点索引 = url文本.indexOf('#');
-	const 主体部分 = 锚点索引 === -1 ? url文本 : url文本.slice(0, 锚点索引);
-	if (主体部分.includes('?') || !/%3f/i.test(主体部分)) return url文本;
-	const 锚点部分 = 锚点索引 === -1 ? '' : url文本.slice(锚点索引);
-	return 主体部分.replace(/%3f/i, '?') + 锚点部分;
+	let 锚点索引 = url文本.indexOf('#');
+	if (锚点索引 === -1) 锚点索引 = url文本.length;
+
+	let 问号索引 = url文本.indexOf('?');
+	if (问号索引 !== -1 && 问号索引 < 锚点索引) return url文本;
+
+	let 编码问号索引 = url文本.indexOf('%3f');
+	let 大写编码问号索引 = url文本.indexOf('%3F');
+
+	if (编码问号索引 === -1) 编码问号索引 = 大写编码问号索引;
+	else if (大写编码问号索引 !== -1 && 大写编码问号索引 < 编码问号索引) 编码问号索引 = 大写编码问号索引;
+
+	if (编码问号索引 === -1 || 编码问号索引 >= 锚点索引) return url文本;
+
+	return url文本.slice(0, 编码问号索引) + '?' + url文本.slice(编码问号索引 + 3);
 }
 ///////////////////////////////////////////////////////SOCKS5/HTTP函数///////////////////////////////////////////////
 async function socks5Connect(targetHost, targetPort, initialData) {
@@ -2282,7 +2305,6 @@ async function Singbox订阅配置文件热补丁(SingBox_原始订阅内容, co
 					if (ech_config) {
 						outbound.tls.ech = {
 							enabled: true,
-							//query_server_name: "cloudflare-ech.com",// 等待 1.13.0+ 版本上线
 							config: `-----BEGIN ECH CONFIGS-----\n${ech_config}\n-----END ECH CONFIGS-----`
 						};
 					}
@@ -2382,18 +2404,14 @@ function 掩码敏感信息(文本, 前缀长度 = 3, 后缀长度 = 2) {
 	return `${前缀}${'*'.repeat(星号数量)}${后缀}`;
 }
 
-async function MD5MD5(文本) {
+async function safeHash(文本) {
 	const 编码器 = new TextEncoder();
 
-	const 第一次哈希 = await crypto.subtle.digest('MD5', 编码器.encode(文本));
-	const 第一次哈希数组 = Array.from(new Uint8Array(第一次哈希));
-	const 第一次十六进制 = 第一次哈希数组.map(字节 => 字节.toString(16).padStart(2, '0')).join('');
+	const 哈希 = await crypto.subtle.digest('SHA-256', 编码器.encode(文本));
+	const 哈希数组 = Array.from(new Uint8Array(哈希));
+	const 十六进制 = 哈希数组.map(字节 => 字节.toString(16).padStart(2, '0')).join('');
 
-	const 第二次哈希 = await crypto.subtle.digest('MD5', 编码器.encode(第一次十六进制.slice(7, 27)));
-	const 第二次哈希数组 = Array.from(new Uint8Array(第二次哈希));
-	const 第二次十六进制 = 第二次哈希数组.map(字节 => 字节.toString(16).padStart(2, '0')).join('');
-
-	return 第二次十六进制.toLowerCase();
+	return 十六进制.toLowerCase();
 }
 
 function 随机路径(完整节点路径 = "/") {
@@ -2411,10 +2429,11 @@ function 批量替换域名(内容, hosts, 每组数量 = 2) {
 	let currentRandomHost = null;
 	return 内容.replace(/example\.com/g, () => {
 		if (count % 每组数量 === 0) {
-			const 原始host = 打乱后HOSTS[Math.floor(count / 每组数量) % 打乱后HOSTS.length];
+			const 原始host = 打乱后HOSTS[((count / 每组数量) | 0) % 打乱后HOSTS.length];
 			currentRandomHost = 原始host?.includes('*') ? 原始host.replace(/\*/g, () => {
 				let s = '';
-				for (let i = 0; i < Math.floor(Math.random() * 14) + 3; i++) s += 字符集[Math.floor(Math.random() * 36)];
+				const len = ((Math.random() * 14) + 3) | 0;
+				for (let i = 0; i < len; i++) s += 字符集[(Math.random() * 36) | 0];
 				return s;
 			}) : 原始host;
 		}
@@ -2624,7 +2643,7 @@ async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重�
 			SUB: null,
 			SUBNAME: "edge" + "tunnel",
 			SUBUpdateTime: 3, // 订阅更新时间（小时）
-			TOKEN: await MD5MD5(hostname + userID),
+			TOKEN: await safeHash(hostname + userID),
 		},
 		订阅转换配置: {
 			SUBAPI: "https://SUBAPI.cmliussss.net",
@@ -2744,7 +2763,7 @@ async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重�
 	config_JSON.LINK = config_JSON.协议类型 === 'ss'
 		? `${config_JSON.协议类型}://${btoa(config_JSON.SS.加密方式 + ':' + userID)}@${host}:${config_JSON.SS.TLS ? '443' : '80'}?plugin=v2${encodeURIComponent(`ray-plugin;mode=websocket;host=${host};path=${((config_JSON.完整节点路径.includes('?') ? config_JSON.完整节点路径.replace('?', '?enc=' + config_JSON.SS.加密方式 + '&') : (config_JSON.完整节点路径 + '?enc=' + config_JSON.SS.加密方式)) + (config_JSON.SS.TLS ? ';tls' : ''))};mux=0`) + ECHLINK参数}#${encodeURIComponent(config_JSON.优选订阅生成.SUBNAME)}`
 		: `${config_JSON.协议类型}://${userID}@${host}:443?security=tls&type=${传输协议 + ECHLINK参数}&${域名字段名}=${host}&fp=${config_JSON.Fingerprint}&sni=${host}&${路径字段名}=${encodeURIComponent(传输路径参数值) + TLS分片参数}&encryption=none${config_JSON.跳过证书验证 ? '&insecure=1&allowInsecure=1' : ''}#${encodeURIComponent(config_JSON.优选订阅生成.SUBNAME)}`;
-	config_JSON.优选订阅生成.TOKEN = await MD5MD5(hostname + userID);
+	config_JSON.优选订阅生成.TOKEN = await safeHash(hostname + userID);
 
 	const 初始化TG_JSON = { BotToken: null, ChatID: null };
 	config_JSON.TG = { 启用: config_JSON.TG.启用 ? config_JSON.TG.启用 : false, ...初始化TG_JSON };
@@ -2954,7 +2973,7 @@ async function 请求优选API(urls, 默认端口 = '443', 超时时间 = 3000) 
 				let decodeSuccess = false;
 				for (const decoder of decoders) {
 					try {
-						const decoded = new TextDecoder(decoder).decode(buffer);
+						const decoded = getGlobalTextDecoder(decoder).decode(buffer);
 						// 验证解码结果的有效性
 						if (decoded && decoded.length > 0 && !decoded.includes('\ufffd')) {
 							text = decoded;
@@ -3200,62 +3219,130 @@ function 获取SOCKS5账号(address, 默认端口 = 80) {
 	return { username, password, hostname, port };
 }
 
-async function getCloudflareUsage(Email, GlobalAPIKey, AccountID, APIToken) {
+const usageCache = new Map();
+
+async function fetchCloudflareUsage(Email, GlobalAPIKey, AccountID, APIToken) {
 	const API = "https://api.cloudflare.com/client/v4";
 	const sum = (a) => a?.reduce((t, i) => t + (i?.sum?.requests || 0), 0) || 0;
 	const cfg = { "Content-Type": "application/json" };
 
-	try {
-		if (!AccountID && (!Email || !GlobalAPIKey)) return { success: false, pages: 0, workers: 0, total: 0, max: 100000 };
+	if (!AccountID && (!Email || !GlobalAPIKey)) return { success: false, pages: 0, workers: 0, total: 0, max: 100000 };
 
-		if (!AccountID) {
-			const r = await fetch(`${API}/accounts`, {
-				method: "GET",
-				headers: { ...cfg, "X-AUTH-EMAIL": Email, "X-AUTH-KEY": GlobalAPIKey }
-			});
-			if (!r.ok) throw new Error(`账户获取失败: ${r.status}`);
-			const d = await r.json();
-			if (!d?.result?.length) throw new Error("未找到账户");
-			const idx = d.result.findIndex(a => a.name?.toLowerCase().startsWith(Email.toLowerCase()));
-			AccountID = d.result[idx >= 0 ? idx : 0]?.id;
+	// Create a zero-trust cache key out of the credentials
+	const cacheKey = `${Email||''}:${GlobalAPIKey||''}:${AccountID||''}:${APIToken||''}`;
+	const nowTime = Date.now();
+	const TTL = 60000; // 60 seconds
+
+	// Check if we have a valid cache or an in-flight promise
+	if (cfUsageCache.has(cacheKey)) {
+		const cached = cfUsageCache.get(cacheKey);
+		if (nowTime - cached.timestamp < TTL) {
+			// If it's a resolved promise with data, return it
+			if (cached.data) return cached.data;
+			// Otherwise wait for the in-flight promise
+			try {
+				return await cached.promise;
+			} catch (e) {
+				// If the cached promise fails, fall through to retry
+			}
 		}
-
-		const now = new Date();
-		now.setUTCHours(0, 0, 0, 0);
-		const hdr = APIToken ? { ...cfg, "Authorization": `Bearer ${APIToken}` } : { ...cfg, "X-AUTH-EMAIL": Email, "X-AUTH-KEY": GlobalAPIKey };
-
-		const res = await fetch(`${API}/graphql`, {
-			method: "POST",
-			headers: hdr,
-			body: JSON.stringify({
-				query: `query getBillingMetrics($AccountID: String!, $filter: AccountWorkersInvocationsAdaptiveFilter_InputObject) {
-					viewer { accounts(filter: {accountTag: $AccountID}) {
-						pagesFunctionsInvocationsAdaptiveGroups(limit: 1000, filter: $filter) { sum { requests } }
-						workersInvocationsAdaptive(limit: 10000, filter: $filter) { sum { requests } }
-					} }
-				}`,
-				variables: { AccountID, filter: { datetime_geq: now.toISOString(), datetime_leq: new Date().toISOString() } }
-			})
-		});
-
-		if (!res.ok) throw new Error(`查询失败: ${res.status}`);
-		const result = await res.json();
-		if (result.errors?.length) throw new Error(result.errors[0].message);
-
-		const acc = result?.data?.viewer?.accounts?.[0];
-		if (!acc) throw new Error("未找到账户数据");
-
-		const pages = sum(acc.pagesFunctionsInvocationsAdaptiveGroups);
-		const workers = sum(acc.workersInvocationsAdaptive);
-		const total = pages + workers;
-		const max = 100000;
-		log(`统计结果 - Pages: ${pages}, Workers: ${workers}, 总计: ${total}, 上限: 100000`);
-		return { success: true, pages, workers, total, max };
-
-	} catch (error) {
-		console.error('获取使用量错误:', error.message);
-		return { success: false, pages: 0, workers: 0, total: 0, max: 100000 };
 	}
+
+	// Create the fetching logic inside a promise to cache immediately
+	const fetchPromise = (async () => {
+		try {
+			let currentAccountID = AccountID;
+			if (!currentAccountID) {
+				const r = await fetch(`${API}/accounts`, {
+					method: "GET",
+					headers: { ...cfg, "X-AUTH-EMAIL": Email, "X-AUTH-KEY": GlobalAPIKey }
+				});
+				if (!r.ok) throw new Error(`账户获取失败: ${r.status}`);
+				const d = await r.json();
+				if (!d?.result?.length) throw new Error("未找到账户");
+				const idx = d.result.findIndex(a => a.name?.toLowerCase().startsWith(Email.toLowerCase()));
+				currentAccountID = d.result[idx >= 0 ? idx : 0]?.id;
+			}
+
+			const now = new Date();
+			now.setUTCHours(0, 0, 0, 0);
+			const hdr = APIToken ? { ...cfg, "Authorization": `Bearer ${APIToken}` } : { ...cfg, "X-AUTH-EMAIL": Email, "X-AUTH-KEY": GlobalAPIKey };
+
+			const res = await fetch(`${API}/graphql`, {
+				method: "POST",
+				headers: hdr,
+				body: JSON.stringify({
+					query: `query getBillingMetrics($AccountID: String!, $filter: AccountWorkersInvocationsAdaptiveFilter_InputObject) {
+						viewer { accounts(filter: {accountTag: $AccountID}) {
+							pagesFunctionsInvocationsAdaptiveGroups(limit: 1000, filter: $filter) { sum { requests } }
+							workersInvocationsAdaptive(limit: 10000, filter: $filter) { sum { requests } }
+						} }
+					}`,
+					variables: { AccountID: currentAccountID, filter: { datetime_geq: now.toISOString(), datetime_leq: new Date().toISOString() } }
+				})
+			});
+
+			if (!res.ok) throw new Error(`查询失败: ${res.status}`);
+			const result = await res.json();
+			if (result.errors?.length) throw new Error(result.errors[0].message);
+
+			const acc = result?.data?.viewer?.accounts?.[0];
+			if (!acc) throw new Error("未找到账户数据");
+
+			const pages = sum(acc.pagesFunctionsInvocationsAdaptiveGroups);
+			const workers = sum(acc.workersInvocationsAdaptive);
+			const total = pages + workers;
+			const max = 100000;
+			log(`统计结果 - Pages: ${pages}, Workers: ${workers}, 总计: ${total}, 上限: 100000`);
+			const finalData = { success: true, pages, workers, total, max };
+
+			// Store successful data
+			const cached = cfUsageCache.get(cacheKey);
+			if (cached) cached.data = finalData;
+			return finalData;
+
+		} catch (error) {
+			console.error('获取使用量错误:', error.message);
+			// Remove from cache on error so subsequent requests can retry cleanly
+			cfUsageCache.delete(cacheKey);
+			return { success: false, pages: 0, workers: 0, total: 0, max: 100000 };
+		}
+	})();
+
+	// Put in-flight promise into cache
+	cfUsageCache.set(cacheKey, { promise: fetchPromise, timestamp: nowTime, data: null });
+
+	return fetchPromise;
+}
+
+async function getCloudflareUsage(Email, GlobalAPIKey, AccountID, APIToken) {
+	const cacheKey = `${Email || ''}|${GlobalAPIKey || ''}|${AccountID || ''}|${APIToken || ''}`;
+	const now = Date.now();
+
+	if (usageCache.has(cacheKey)) {
+		const cached = usageCache.get(cacheKey);
+		if (now < cached.expiresAt) {
+			return cached.promise;
+		}
+	}
+
+	const promise = fetchCloudflareUsage(Email, GlobalAPIKey, AccountID, APIToken).then(result => {
+		if (!result.success) {
+			usageCache.delete(cacheKey);
+		}
+		return result;
+	}).catch(err => {
+		usageCache.delete(cacheKey);
+		return { success: false, pages: 0, workers: 0, total: 0, max: 100000 };
+	});
+
+	// Cache for 5 minutes (300000 ms)
+	usageCache.set(cacheKey, {
+		promise,
+		expiresAt: now + 300000
+	});
+
+	return promise;
 }
 
 function sha224(s) {
@@ -3310,7 +3397,6 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 		}
 
 		const 反代IP数组 = await 整理成数组(proxyIP);
-		let 所有反代数组 = [];
 
 		// 将数组分块，避免并发请求过多导致Cloudflare Worker达到子请求限制 (最大50个)
 		const chunkSize = 5;
@@ -3343,6 +3429,23 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 					if (singleProxyIP.includes('.tp')) {
 						const tpMatch = singleProxyIP.match(/\.tp(\d+)/);
 						if (tpMatch) 端口 = parseInt(tpMatch[1], 10);
+		// 并行遍历数组中的每个IP元素进行处理
+		const 处理结果数组 = await Promise.all(反代IP数组.map(async (singleProxyIP) => {
+			let 当前反代数组 = [];
+			if (singleProxyIP.includes('.william')) {
+				try {
+					let txtRecords = await DoH查询(singleProxyIP, 'TXT');
+					let txtData = txtRecords.filter(r => r.type === 16).map(r => /** @type {string} */(r.data));
+					if (txtData.length === 0) {
+						log(`[反代解析] 默认DoH未获取到TXT记录，切换Google DoH重试 ${singleProxyIP}`);
+						txtRecords = await DoH查询(singleProxyIP, 'TXT', 'https://dns.google/dns-query');
+						txtData = txtRecords.filter(r => r.type === 16).map(r => /** @type {string} */(r.data));
+					}
+					if (txtData.length > 0) {
+						let data = txtData[0];
+						if (data.startsWith('"') && data.endsWith('"')) data = data.slice(1, -1);
+						const prefixes = data.replace(/\\010/g, ',').replace(/\n/g, ',').split(',').map(s => s.trim()).filter(Boolean);
+						当前反代数组.push(...prefixes.map(prefix => 解析地址端口字符串(prefix)));
 					}
 
 					// 判断是否是域名（非IP地址）
@@ -3380,6 +3483,13 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 					} else {
 						resultGroup.push([地址, 端口]);
 					}
+					if (ipAddresses.length > 0) {
+						当前反代数组.push(...ipAddresses.map(ip => [ip, 端口]));
+					} else {
+						当前反代数组.push([地址, 端口]);
+					}
+				} else {
+					当前反代数组.push([地址, 端口]);
 				}
 				return resultGroup;
 			}));
@@ -3387,7 +3497,9 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 			for (const group of chunkResults) {
 				所有反代数组.push(...group);
 			}
-		}
+			return 当前反代数组;
+		}));
+		const 所有反代数组 = 处理结果数组.flat();
 		const 排序后数组 = 所有反代数组.sort((a, b) => a[0].localeCompare(b[0]));
 		const 目标根域名 = 目标域名.includes('.') ? 目标域名.split('.').slice(-2).join('.') : 目标域名;
 		let 随机种子 = [...(目标根域名 + UUID)].reduce((a, c) => a + c.charCodeAt(0), 0);
