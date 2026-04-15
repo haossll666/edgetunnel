@@ -3327,10 +3327,10 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 		}
 
 		const 反代IP数组 = await 整理成数组(proxyIP);
-		let 所有反代数组 = [];
 
-		// 遍历数组中的每个IP元素进行处理
-		for (const singleProxyIP of 反代IP数组) {
+		// 并行遍历数组中的每个IP元素进行处理
+		const 处理结果数组 = await Promise.all(反代IP数组.map(async (singleProxyIP) => {
+			let 当前反代数组 = [];
 			if (singleProxyIP.includes('.william')) {
 				try {
 					let txtRecords = await DoH查询(singleProxyIP, 'TXT');
@@ -3344,7 +3344,7 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 						let data = txtData[0];
 						if (data.startsWith('"') && data.endsWith('"')) data = data.slice(1, -1);
 						const prefixes = data.replace(/\\010/g, ',').replace(/\n/g, ',').split(',').map(s => s.trim()).filter(Boolean);
-						所有反代数组.push(...prefixes.map(prefix => 解析地址端口字符串(prefix)));
+						当前反代数组.push(...prefixes.map(prefix => 解析地址端口字符串(prefix)));
 					}
 				} catch (error) {
 					console.error('解析William域名失败:', error);
@@ -3385,15 +3385,17 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 					}
 
 					if (ipAddresses.length > 0) {
-						所有反代数组.push(...ipAddresses.map(ip => [ip, 端口]));
+						当前反代数组.push(...ipAddresses.map(ip => [ip, 端口]));
 					} else {
-						所有反代数组.push([地址, 端口]);
+						当前反代数组.push([地址, 端口]);
 					}
 				} else {
-					所有反代数组.push([地址, 端口]);
+					当前反代数组.push([地址, 端口]);
 				}
 			}
-		}
+			return 当前反代数组;
+		}));
+		const 所有反代数组 = 处理结果数组.flat();
 		const 排序后数组 = 所有反代数组.sort((a, b) => a[0].localeCompare(b[0]));
 		const 目标根域名 = 目标域名.includes('.') ? 目标域名.split('.').slice(-2).join('.') : 目标域名;
 		let 随机种子 = [...(目标根域名 + UUID)].reduce((a, c) => a + c.charCodeAt(0), 0);
