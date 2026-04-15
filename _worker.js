@@ -392,7 +392,10 @@ export default {
 			新请求头.set('Referer', 反代URL.origin);
 			新请求头.set('Origin', 反代URL.origin);
 			if (!新请求头.has('User-Agent') && UA && UA !== 'null') 新请求头.set('User-Agent', UA);
-			const 反代响应 = await fetch(反代URL.origin + url.pathname + url.search, { method: request.method, headers: 新请求头, body: request.body, cf: request.cf });
+			const 实际反代URL = new URL(反代URL.href);
+			实际反代URL.pathname = url.pathname;
+			实际反代URL.search = url.search;
+			const 反代响应 = await fetch(实际反代URL.href, { method: request.method, headers: 新请求头, body: request.body, cf: request.cf });
 			const 内容类型 = 反代响应.headers.get('content-type') || '';
 			// 只处理文本类型的响应
 			if (/text|javascript|json|xml/.test(内容类型)) {
@@ -1233,6 +1236,7 @@ async function 处理WS请求(request, yourUUID, url) {
 			}
 			const 明文数据 = SS数据转Uint8Array(明文块);
 			if (明文数据.byteLength < 3) throw new Error('invalid ss data');
+			const view = new DataView(明文数据.buffer, 明文数据.byteOffset, 明文数据.byteLength);
 			const addressType = 明文数据[0];
 			let cursor = 1;
 			let hostname = '';
@@ -1250,8 +1254,7 @@ async function 处理WS请求(request, yourUUID, url) {
 			} else if (addressType === 4) {
 				if (明文数据.byteLength < cursor + 16 + 2) throw new Error('invalid ss ipv6 length');
 				const ipv6 = [];
-				const ipv6View = new DataView(明文数据.buffer, 明文数据.byteOffset + cursor, 16);
-				for (let i = 0; i < 8; i++) ipv6.push(ipv6View.getUint16(i * 2).toString(16));
+				for (let i = 0; i < 8; i++) ipv6.push(view.getUint16(cursor + i * 2).toString(16));
 				hostname = ipv6.join(':');
 				cursor += 16;
 			} else {
@@ -1334,40 +1337,40 @@ async function 处理WS请求(request, yourUUID, url) {
 }
 
 function 解析木马请求(buffer, passwordPlainText) {
+	const uint8 = new Uint8Array(buffer);
 	const sha224Password = sha224(passwordPlainText);
-	if (buffer.byteLength < 56) return { hasError: true, message: "invalid data" };
+	if (uint8.byteLength < 56) return { hasError: true, message: "invalid data" };
 	let crLfIndex = 56;
-	if (new Uint8Array(buffer.slice(56, 57))[0] !== 0x0d || new Uint8Array(buffer.slice(57, 58))[0] !== 0x0a) return { hasError: true, message: "invalid header format" };
-	const password = new TextDecoder().decode(buffer.slice(0, crLfIndex));
+	if (uint8[56] !== 0x0d || uint8[57] !== 0x0a) return { hasError: true, message: "invalid header format" };
+	const password = new TextDecoder().decode(uint8.subarray(0, crLfIndex));
 	if (password !== sha224Password) return { hasError: true, message: "invalid password" };
 
-	const socks5DataBuffer = buffer.slice(crLfIndex + 2);
-	if (socks5DataBuffer.byteLength < 6) return { hasError: true, message: "invalid S5 request data" };
+	const socks5DataOffset = crLfIndex + 2;
+	if (uint8.byteLength < socks5DataOffset + 6) return { hasError: true, message: "invalid S5 request data" };
 
-	const view = new DataView(socks5DataBuffer);
-	const cmd = view.getUint8(0);
+	const view = new DataView(uint8.buffer, uint8.byteOffset, uint8.byteLength);
+	const cmd = uint8[socks5DataOffset];
 	if (cmd !== 1) return { hasError: true, message: "unsupported command, only TCP is allowed" };
 
-	const atype = view.getUint8(1);
+	const atype = uint8[socks5DataOffset + 1];
 	let addressLength = 0;
-	let addressIndex = 2;
+	let addressIndex = socks5DataOffset + 2;
 	let address = "";
 	switch (atype) {
 		case 1: // IPv4
 			addressLength = 4;
-			address = new Uint8Array(socks5DataBuffer.slice(addressIndex, addressIndex + addressLength)).join(".");
+			address = uint8.subarray(addressIndex, addressIndex + addressLength).join(".");
 			break;
 		case 3: // Domain
-			addressLength = new Uint8Array(socks5DataBuffer.slice(addressIndex, addressIndex + 1))[0];
+			addressLength = uint8[addressIndex];
 			addressIndex += 1;
-			address = new TextDecoder().decode(socks5DataBuffer.slice(addressIndex, addressIndex + addressLength));
+			address = new TextDecoder().decode(uint8.subarray(addressIndex, addressIndex + addressLength));
 			break;
 		case 4: // IPv6
 			addressLength = 16;
-			const dataView = new DataView(socks5DataBuffer.slice(addressIndex, addressIndex + addressLength));
 			const ipv6 = [];
 			for (let i = 0; i < 8; i++) {
-				ipv6.push(dataView.getUint16(i * 2).toString(16));
+				ipv6.push(view.getUint16(addressIndex + i * 2).toString(16));
 			}
 			address = ipv6.join(":");
 			break;
@@ -1380,45 +1383,46 @@ function 解析木马请求(buffer, passwordPlainText) {
 	}
 
 	const portIndex = addressIndex + addressLength;
-	const portBuffer = socks5DataBuffer.slice(portIndex, portIndex + 2);
-	const portRemote = new DataView(portBuffer).getUint16(0);
+	const portRemote = view.getUint16(portIndex);
 
 	return {
 		hasError: false,
 		addressType: atype,
 		port: portRemote,
 		hostname: address,
-		rawClientData: socks5DataBuffer.slice(portIndex + 4)
+		rawClientData: uint8.subarray(portIndex + 4)
 	};
 }
 
 function 解析魏烈思请求(chunk, token) {
-	if (chunk.byteLength < 24) return { hasError: true, message: 'Invalid data' };
-	const version = new Uint8Array(chunk.slice(0, 1));
-	if (formatIdentifier(new Uint8Array(chunk.slice(1, 17))) !== token) return { hasError: true, message: 'Invalid uuid' };
-	const optLen = new Uint8Array(chunk.slice(17, 18))[0];
-	const cmd = new Uint8Array(chunk.slice(18 + optLen, 19 + optLen))[0];
+	const uint8 = new Uint8Array(chunk);
+	if (uint8.byteLength < 24) return { hasError: true, message: 'Invalid data' };
+	const view = new DataView(uint8.buffer, uint8.byteOffset, uint8.byteLength);
+
+	const version = uint8.subarray(0, 1);
+	if (formatIdentifier(uint8, 1) !== token) return { hasError: true, message: 'Invalid uuid' };
+	const optLen = uint8[17];
+	const cmd = uint8[18 + optLen];
 	let isUDP = false;
 	if (cmd === 1) { } else if (cmd === 2) { isUDP = true } else { return { hasError: true, message: 'Invalid command' } }
 	const portIdx = 19 + optLen;
-	const port = new DataView(chunk.slice(portIdx, portIdx + 2)).getUint16(0);
+	const port = view.getUint16(portIdx);
 	let addrIdx = portIdx + 2, addrLen = 0, addrValIdx = addrIdx + 1, hostname = '';
-	const addressType = new Uint8Array(chunk.slice(addrIdx, addrValIdx))[0];
+	const addressType = uint8[addrIdx];
 	switch (addressType) {
 		case 1:
 			addrLen = 4;
-			hostname = new Uint8Array(chunk.slice(addrValIdx, addrValIdx + addrLen)).join('.');
+			hostname = uint8.subarray(addrValIdx, addrValIdx + addrLen).join('.');
 			break;
 		case 2:
-			addrLen = new Uint8Array(chunk.slice(addrValIdx, addrValIdx + 1))[0];
+			addrLen = uint8[addrValIdx];
 			addrValIdx += 1;
-			hostname = new TextDecoder().decode(chunk.slice(addrValIdx, addrValIdx + addrLen));
+			hostname = new TextDecoder().decode(uint8.subarray(addrValIdx, addrValIdx + addrLen));
 			break;
 		case 3:
 			addrLen = 16;
 			const ipv6 = [];
-			const ipv6View = new DataView(chunk.slice(addrValIdx, addrValIdx + addrLen));
-			for (let i = 0; i < 8; i++) ipv6.push(ipv6View.getUint16(i * 2).toString(16));
+			for (let i = 0; i < 8; i++) ipv6.push(view.getUint16(addrValIdx + i * 2).toString(16));
 			hostname = ipv6.join(':');
 			break;
 		default:
@@ -1436,6 +1440,15 @@ const SS支持加密配置 = {
 const SSAEAD标签长度 = 16, SSNonce长度 = 12;
 const SS子密钥信息 = new TextEncoder().encode('ss-subkey');
 const SS文本编码器 = new TextEncoder(), SS文本解码器 = new TextDecoder(), SS主密钥缓存 = new Map();
+const globalTextDecoders = new Map();
+function getGlobalTextDecoder(encoding) {
+	let decoder = globalTextDecoders.get(encoding);
+	if (!decoder) {
+		decoder = new TextDecoder(encoding);
+		globalTextDecoders.set(encoding, decoder);
+	}
+	return decoder;
+}
 
 function SS数据转Uint8Array(data) {
 	if (data instanceof Uint8Array) return data;
@@ -1664,7 +1677,10 @@ function closeSocketQuietly(socket) {
 }
 
 function formatIdentifier(arr, offset = 0) {
-	const hex = [...arr.slice(offset, offset + 16)].map(b => b.toString(16).padStart(2, '0')).join('');
+	let hex = '';
+	for (let i = 0; i < 16; i++) {
+		hex += arr[offset + i].toString(16).padStart(2, '0');
+	}
 	return `${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}`;
 }
 
@@ -1773,11 +1789,21 @@ function isSpeedTestSite(hostname) {
 
 function 修正请求URL(url文本) {
 	url文本 = url文本.replace(/%5[Cc]/g, '').replace(/\\/g, '');
-	const 锚点索引 = url文本.indexOf('#');
-	const 主体部分 = 锚点索引 === -1 ? url文本 : url文本.slice(0, 锚点索引);
-	if (主体部分.includes('?') || !/%3f/i.test(主体部分)) return url文本;
-	const 锚点部分 = 锚点索引 === -1 ? '' : url文本.slice(锚点索引);
-	return 主体部分.replace(/%3f/i, '?') + 锚点部分;
+	let 锚点索引 = url文本.indexOf('#');
+	if (锚点索引 === -1) 锚点索引 = url文本.length;
+
+	let 问号索引 = url文本.indexOf('?');
+	if (问号索引 !== -1 && 问号索引 < 锚点索引) return url文本;
+
+	let 编码问号索引 = url文本.indexOf('%3f');
+	let 大写编码问号索引 = url文本.indexOf('%3F');
+
+	if (编码问号索引 === -1) 编码问号索引 = 大写编码问号索引;
+	else if (大写编码问号索引 !== -1 && 大写编码问号索引 < 编码问号索引) 编码问号索引 = 大写编码问号索引;
+
+	if (编码问号索引 === -1 || 编码问号索引 >= 锚点索引) return url文本;
+
+	return url文本.slice(0, 编码问号索引) + '?' + url文本.slice(编码问号索引 + 3);
 }
 ///////////////////////////////////////////////////////SOCKS5/HTTP函数///////////////////////////////////////////////
 async function socks5Connect(targetHost, targetPort, initialData) {
@@ -2950,7 +2976,7 @@ async function 请求优选API(urls, 默认端口 = '443', 超时时间 = 3000) 
 				let decodeSuccess = false;
 				for (const decoder of decoders) {
 					try {
-						const decoded = new TextDecoder(decoder).decode(buffer);
+						const decoded = getGlobalTextDecoder(decoder).decode(buffer);
 						// 验证解码结果的有效性
 						if (decoded && decoded.length > 0 && !decoded.includes('\ufffd')) {
 							text = decoded;
@@ -3306,10 +3332,10 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 		}
 
 		const 反代IP数组 = await 整理成数组(proxyIP);
-		let 所有反代数组 = [];
 
-		// 遍历数组中的每个IP元素进行处理
-		for (const singleProxyIP of 反代IP数组) {
+		// 并行遍历数组中的每个IP元素进行处理
+		const 处理结果数组 = await Promise.all(反代IP数组.map(async (singleProxyIP) => {
+			let 当前反代数组 = [];
 			if (singleProxyIP.includes('.william')) {
 				try {
 					let txtRecords = await DoH查询(singleProxyIP, 'TXT');
@@ -3323,7 +3349,7 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 						let data = txtData[0];
 						if (data.startsWith('"') && data.endsWith('"')) data = data.slice(1, -1);
 						const prefixes = data.replace(/\\010/g, ',').replace(/\n/g, ',').split(',').map(s => s.trim()).filter(Boolean);
-						所有反代数组.push(...prefixes.map(prefix => 解析地址端口字符串(prefix)));
+						当前反代数组.push(...prefixes.map(prefix => 解析地址端口字符串(prefix)));
 					}
 				} catch (error) {
 					console.error('解析William域名失败:', error);
@@ -3364,15 +3390,17 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 					}
 
 					if (ipAddresses.length > 0) {
-						所有反代数组.push(...ipAddresses.map(ip => [ip, 端口]));
+						当前反代数组.push(...ipAddresses.map(ip => [ip, 端口]));
 					} else {
-						所有反代数组.push([地址, 端口]);
+						当前反代数组.push([地址, 端口]);
 					}
 				} else {
-					所有反代数组.push([地址, 端口]);
+					当前反代数组.push([地址, 端口]);
 				}
 			}
-		}
+			return 当前反代数组;
+		}));
+		const 所有反代数组 = 处理结果数组.flat();
 		const 排序后数组 = 所有反代数组.sort((a, b) => a[0].localeCompare(b[0]));
 		const 目标根域名 = 目标域名.includes('.') ? 目标域名.split('.').slice(-2).join('.') : 目标域名;
 		let 随机种子 = [...(目标根域名 + UUID)].reduce((a, c) => a + c.charCodeAt(0), 0);
