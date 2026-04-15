@@ -18,10 +18,10 @@ export default {
 		}
 		const 管理员密码 = env.ADMIN || env.admin || env.PASSWORD || env.password || env.pswd || env.TOKEN || env.KEY || env.UUID || env.uuid;
 		const 加密秘钥 = env.KEY;
-		const userIDMD5 = await safeHash(管理员密码 + 加密秘钥);
+		const userIDMD5 = await MD5MD5(管理员密码 + 加密秘钥);
 		const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 		const envUUID = env.UUID || env.uuid;
-		const userID = (envUUID && uuidRegex.test(envUUID)) ? envUUID.toLowerCase() : [userIDMD5.slice(0, 8), userIDMD5.slice(8, 12), '4' + userIDMD5.slice(13, 16), '8' + userIDMD5.slice(17, 20), userIDMD5.slice(20, 32)].join('-');
+		const userID = (envUUID && uuidRegex.test(envUUID)) ? envUUID.toLowerCase() : [userIDMD5.slice(0, 8), userIDMD5.slice(8, 12), '4' + userIDMD5.slice(13, 16), '8' + userIDMD5.slice(17, 20), userIDMD5.slice(20)].join('-');
 		const hosts = env.HOST ? (await 整理成数组(env.HOST)).map(h => { const m = h.match(/^(?:https?:\/\/)?([^/:]+)/i); return (m ? m[1] : h).toLowerCase(); }) : [url.hostname];
 		const host = hosts[0];
 		const 访问路径 = url.pathname.slice(1).toLowerCase();
@@ -2308,7 +2308,6 @@ async function Singbox订阅配置文件热补丁(SingBox_原始订阅内容, co
 					if (ech_config) {
 						outbound.tls.ech = {
 							enabled: true,
-							//query_server_name: "cloudflare-ech.com",// 等待 1.13.0+ 版本上线
 							config: `-----BEGIN ECH CONFIGS-----\n${ech_config}\n-----END ECH CONFIGS-----`
 						};
 					}
