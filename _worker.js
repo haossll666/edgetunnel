@@ -1780,11 +1780,21 @@ function isSpeedTestSite(hostname) {
 
 function 修正请求URL(url文本) {
 	url文本 = url文本.replace(/%5[Cc]/g, '').replace(/\\/g, '');
-	const 锚点索引 = url文本.indexOf('#');
-	const 主体部分 = 锚点索引 === -1 ? url文本 : url文本.slice(0, 锚点索引);
-	if (主体部分.includes('?') || !/%3f/i.test(主体部分)) return url文本;
-	const 锚点部分 = 锚点索引 === -1 ? '' : url文本.slice(锚点索引);
-	return 主体部分.replace(/%3f/i, '?') + 锚点部分;
+	let 锚点索引 = url文本.indexOf('#');
+	if (锚点索引 === -1) 锚点索引 = url文本.length;
+
+	let 问号索引 = url文本.indexOf('?');
+	if (问号索引 !== -1 && 问号索引 < 锚点索引) return url文本;
+
+	let 编码问号索引 = url文本.indexOf('%3f');
+	let 大写编码问号索引 = url文本.indexOf('%3F');
+
+	if (编码问号索引 === -1) 编码问号索引 = 大写编码问号索引;
+	else if (大写编码问号索引 !== -1 && 大写编码问号索引 < 编码问号索引) 编码问号索引 = 大写编码问号索引;
+
+	if (编码问号索引 === -1 || 编码问号索引 >= 锚点索引) return url文本;
+
+	return url文本.slice(0, 编码问号索引) + '?' + url文本.slice(编码问号索引 + 3);
 }
 ///////////////////////////////////////////////////////SOCKS5/HTTP函数///////////////////////////////////////////////
 async function socks5Connect(targetHost, targetPort, initialData) {
