@@ -3562,3 +3562,5 @@ async function html1101(host, 访问IP) {
 </body>
 </html>`;
 }
+
+export { SS拼接字节, SS数据转Uint8Array };
