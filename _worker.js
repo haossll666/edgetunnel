@@ -1440,6 +1440,15 @@ const SS支持加密配置 = {
 const SSAEAD标签长度 = 16, SSNonce长度 = 12;
 const SS子密钥信息 = new TextEncoder().encode('ss-subkey');
 const SS文本编码器 = new TextEncoder(), SS文本解码器 = new TextDecoder(), SS主密钥缓存 = new Map();
+const globalTextDecoders = new Map();
+function getGlobalTextDecoder(encoding) {
+	let decoder = globalTextDecoders.get(encoding);
+	if (!decoder) {
+		decoder = new TextDecoder(encoding);
+		globalTextDecoders.set(encoding, decoder);
+	}
+	return decoder;
+}
 
 function SS数据转Uint8Array(data) {
 	if (data instanceof Uint8Array) return data;
@@ -2971,7 +2980,7 @@ async function 请求优选API(urls, 默认端口 = '443', 超时时间 = 3000) 
 				let decodeSuccess = false;
 				for (const decoder of decoders) {
 					try {
-						const decoded = new TextDecoder(decoder).decode(buffer);
+						const decoded = getGlobalTextDecoder(decoder).decode(buffer);
 						// 验证解码结果的有效性
 						if (decoded && decoded.length > 0 && !decoded.includes('\ufffd')) {
 							text = decoded;
