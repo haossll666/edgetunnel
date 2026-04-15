@@ -3226,7 +3226,9 @@ function 获取SOCKS5账号(address, 默认端口 = 80) {
 	return { username, password, hostname, port };
 }
 
-async function getCloudflareUsage(Email, GlobalAPIKey, AccountID, APIToken) {
+const usageCache = new Map();
+
+async function fetchCloudflareUsage(Email, GlobalAPIKey, AccountID, APIToken) {
 	const API = "https://api.cloudflare.com/client/v4";
 	const sum = (a) => a?.reduce((t, i) => t + (i?.sum?.requests || 0), 0) || 0;
 	const cfg = { "Content-Type": "application/json" };
@@ -3282,6 +3284,36 @@ async function getCloudflareUsage(Email, GlobalAPIKey, AccountID, APIToken) {
 		console.error('获取使用量错误:', error.message);
 		return { success: false, pages: 0, workers: 0, total: 0, max: 100000 };
 	}
+}
+
+async function getCloudflareUsage(Email, GlobalAPIKey, AccountID, APIToken) {
+	const cacheKey = `${Email || ''}|${GlobalAPIKey || ''}|${AccountID || ''}|${APIToken || ''}`;
+	const now = Date.now();
+
+	if (usageCache.has(cacheKey)) {
+		const cached = usageCache.get(cacheKey);
+		if (now < cached.expiresAt) {
+			return cached.promise;
+		}
+	}
+
+	const promise = fetchCloudflareUsage(Email, GlobalAPIKey, AccountID, APIToken).then(result => {
+		if (!result.success) {
+			usageCache.delete(cacheKey);
+		}
+		return result;
+	}).catch(err => {
+		usageCache.delete(cacheKey);
+		return { success: false, pages: 0, workers: 0, total: 0, max: 100000 };
+	});
+
+	// Cache for 5 minutes (300000 ms)
+	usageCache.set(cacheKey, {
+		promise,
+		expiresAt: now + 300000
+	});
+
+	return promise;
 }
 
 function sha224(s) {
