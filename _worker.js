@@ -2282,7 +2282,6 @@ async function Singbox订阅配置文件热补丁(SingBox_原始订阅内容, co
 					if (ech_config) {
 						outbound.tls.ech = {
 							enabled: true,
-							//query_server_name: "cloudflare-ech.com",// 等待 1.13.0+ 版本上线
 							config: `-----BEGIN ECH CONFIGS-----\n${ech_config}\n-----END ECH CONFIGS-----`
 						};
 					}
