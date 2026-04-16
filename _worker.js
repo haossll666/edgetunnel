@@ -1662,7 +1662,6 @@ async function forwardataudp(udpChunk, webSocket, respHeader) {
 			},
 		}));
 	} catch (error) {
-		// console.error('UDP forward error:', error);
 	}
 }
 
