@@ -1,6 +1,6 @@
 const Version = '2026-04-10 06:03:17';
-/*In our project workflow, we first*/ import //the necessary modules, 
-/*then*/ { connect }//to the central server, 
+/*In our project workflow, we first*/ import //the necessary modules,
+/*then*/ { connect }//to the central server,
 /*and all data flows*/ from//this single source.
 	'cloudflare\u003asockets';
 let config_JSON, 反代IP = '', 启用SOCKS5反代 = null, 启用SOCKS5全局反代 = false, 我的SOCKS5账号 = '', parsedSocks5Address = {};
@@ -310,7 +310,7 @@ export default {
 							const { type: 传输协议, 路径字段名, 域名字段名 } = 获取传输协议配置(config_JSON);
 							订阅内容 = 其他节点LINK + 完整优选IP.map(原始地址 => {
 								// 统一正则: 匹配 域名/IPv4/IPv6地址 + 可选端口 + 可选备注
-								// 示例: 
+								// 示例:
 								//   - 域名: hj.xmm1993.top:2096#备注 或 example.com
 								//   - IPv4: 166.0.188.128:443#Los Angeles 或 166.0.188.128
 								//   - IPv6: [2606:4700::]:443#CMCC 或 [2606:4700::]
@@ -3429,23 +3429,6 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 					if (singleProxyIP.includes('.tp')) {
 						const tpMatch = singleProxyIP.match(/\.tp(\d+)/);
 						if (tpMatch) 端口 = parseInt(tpMatch[1], 10);
-		// 并行遍历数组中的每个IP元素进行处理
-		const 处理结果数组 = await Promise.all(反代IP数组.map(async (singleProxyIP) => {
-			let 当前反代数组 = [];
-			if (singleProxyIP.includes('.william')) {
-				try {
-					let txtRecords = await DoH查询(singleProxyIP, 'TXT');
-					let txtData = txtRecords.filter(r => r.type === 16).map(r => /** @type {string} */(r.data));
-					if (txtData.length === 0) {
-						log(`[反代解析] 默认DoH未获取到TXT记录，切换Google DoH重试 ${singleProxyIP}`);
-						txtRecords = await DoH查询(singleProxyIP, 'TXT', 'https://dns.google/dns-query');
-						txtData = txtRecords.filter(r => r.type === 16).map(r => /** @type {string} */(r.data));
-					}
-					if (txtData.length > 0) {
-						let data = txtData[0];
-						if (data.startsWith('"') && data.endsWith('"')) data = data.slice(1, -1);
-						const prefixes = data.replace(/\\010/g, ',').replace(/\n/g, ',').split(',').map(s => s.trim()).filter(Boolean);
-						当前反代数组.push(...prefixes.map(prefix => 解析地址端口字符串(prefix)));
 					}
 
 					// 判断是否是域名（非IP地址）
@@ -3483,13 +3466,6 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 					} else {
 						resultGroup.push([地址, 端口]);
 					}
-					if (ipAddresses.length > 0) {
-						当前反代数组.push(...ipAddresses.map(ip => [ip, 端口]));
-					} else {
-						当前反代数组.push([地址, 端口]);
-					}
-				} else {
-					当前反代数组.push([地址, 端口]);
 				}
 				return resultGroup;
 			}));
@@ -3497,9 +3473,7 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 			for (const group of chunkResults) {
 				所有反代数组.push(...group);
 			}
-			return 当前反代数组;
-		}));
-		const 所有反代数组 = 处理结果数组.flat();
+		}
 		const 排序后数组 = 所有反代数组.sort((a, b) => a[0].localeCompare(b[0]));
 		const 目标根域名 = 目标域名.includes('.') ? 目标域名.split('.').slice(-2).join('.') : 目标域名;
 		let 随机种子 = [...(目标根域名 + UUID)].reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -3559,12 +3533,12 @@ async function nginx() {
 	<h1>Welcome to nginx!</h1>
 	<p>If you see this page, the nginx web server is successfully installed and
 	working. Further configuration is required.</p>
-	
+
 	<p>For online documentation and support please refer to
 	<a href="http://nginx.org/">nginx.org</a>.<br/>
 	Commercial support is available at
 	<a href="http://nginx.com/">nginx.com</a>.</p>
-	
+
 	<p><em>Thank you for using nginx.</em></p>
 	</body>
 	</html>
@@ -3617,24 +3591,24 @@ async function html1101(host, 访问IP) {
                 </h1>
                 <h2 class="cf-subheadline" data-translate="error_desc">Worker threw exception</h2>
             </div><!-- /.header -->
-    
+
             <section></section><!-- spacer -->
-    
+
             <div class="cf-section cf-wrapper">
                 <div class="cf-columns two">
                     <div class="cf-column">
                         <h2 data-translate="what_happened">What happened?</h2>
                             <p>You've requested a page on a website (${host}) that is on the <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=error_100x" target="_blank">Cloudflare</a> network. An unknown error occurred while rendering the page.</p>
                     </div>
-                    
+
                     <div class="cf-column">
                         <h2 data-translate="what_can_i_do">What can I do?</h2>
                             <p><strong>If you are the owner of this website:</strong><br />refer to <a href="https://developers.cloudflare.com/workers/observability/errors/" target="_blank">Workers - Errors and Exceptions</a> and check Workers Logs for ${host}.</p>
                     </div>
-                    
+
                 </div>
             </div><!-- /.section -->
-    
+
             <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
     <p class="text-13">
       <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold"> ${随机字符串}</strong></span>
@@ -3646,7 +3620,7 @@ async function html1101(host, 访问IP) {
         <span class="cf-footer-separator sm:hidden">&bull;</span>
       </span>
       <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing" id="brand_link" target="_blank">Cloudflare</a></span>
-      
+
     </p>
     <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
   </div><!-- /.error-footer -->
@@ -3656,9 +3630,9 @@ async function html1101(host, 访问IP) {
 
      <script>
     window._cf_translation = {};
-    
-    
-  </script> 
+
+
+  </script>
 </body>
 </html>`;
 }
