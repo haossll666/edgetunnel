@@ -394,7 +394,14 @@ export default {
 			新请求头.set('Origin', 反代URL.origin);
 			if (!新请求头.has('User-Agent') && UA && UA !== 'null') 新请求头.set('User-Agent', UA);
 			const 实际反代URL = new URL(反代URL.href);
-			实际反代URL.pathname = url.pathname;
+			let 安全路径 = url.pathname;
+			if (安全路径) {
+				安全路径 = 安全路径.split('\\').join('/');
+				while (安全路径.startsWith('//')) {
+					安全路径 = 安全路径.slice(1);
+				}
+			}
+			实际反代URL.pathname = 安全路径;
 			实际反代URL.search = url.search;
 			const 反代响应 = await fetch(实际反代URL.href, { method: request.method, headers: 新请求头, body: request.body, cf: request.cf });
 			const 内容类型 = 反代响应.headers.get('content-type') || '';
