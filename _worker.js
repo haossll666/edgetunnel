@@ -19,10 +19,10 @@ export default {
 		}
 		const 管理员密码 = env.ADMIN || env.admin || env.PASSWORD || env.password || env.pswd || env.TOKEN || env.KEY || env.UUID || env.uuid;
 		const 加密秘钥 = env.KEY;
-		const userIDMD5 = await MD5MD5(管理员密码 + 加密秘钥);
+		const userIDHash = await safeHash(管理员密码 + 加密秘钥);
 		const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 		const envUUID = env.UUID || env.uuid;
-		const userID = (envUUID && uuidRegex.test(envUUID)) ? envUUID.toLowerCase() : [userIDMD5.slice(0, 8), userIDMD5.slice(8, 12), '4' + userIDMD5.slice(13, 16), '8' + userIDMD5.slice(17, 20), userIDMD5.slice(20)].join('-');
+		const userID = (envUUID && uuidRegex.test(envUUID)) ? envUUID.toLowerCase() : [userIDHash.slice(0, 8), userIDHash.slice(8, 12), '4' + userIDHash.slice(13, 16), '8' + userIDHash.slice(17, 20), userIDHash.slice(20, 32)].join('-');
 		const hosts = env.HOST ? (await 整理成数组(env.HOST)).map(h => { const m = h.match(/^(?:https?:\/\/)?([^/:]+)/i); return (m ? m[1] : h).toLowerCase(); }) : [url.hostname];
 		const host = hosts[0];
 		const 访问路径 = url.pathname.slice(1).toLowerCase();
@@ -394,7 +394,12 @@ export default {
 			新请求头.set('Origin', 反代URL.origin);
 			if (!新请求头.has('User-Agent') && UA && UA !== 'null') 新请求头.set('User-Agent', UA);
 			const 实际反代URL = new URL(反代URL.href);
-			实际反代URL.pathname = url.pathname;
+			let 安全路径 = url.pathname;
+			while (安全路径.includes('//')) {
+				let idx = 安全路径.indexOf('//');
+				安全路径 = 安全路径.slice(0, idx) + '/' + 安全路径.slice(idx + 2);
+			}
+			实际反代URL.pathname = 安全路径;
 			实际反代URL.search = url.search;
 			const 反代响应 = await fetch(实际反代URL.href, { method: request.method, headers: 新请求头, body: request.body, cf: request.cf });
 			const 内容类型 = 反代响应.headers.get('content-type') || '';
@@ -3382,24 +3387,9 @@ function sha224(s) {
 }
 
 async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com', UUID = '00000000-0000-4000-8000-000000000000') {
-	if (!缓存反代IP || !缓存反代解析数组 || 缓存反代IP !== proxyIP) {
-		proxyIP = proxyIP.toLowerCase();
-
-		function 解析地址端口字符串(str) {
-			let 地址 = str, 端口 = 443;
-			if (str.includes(']:')) {
-				const parts = str.split(']:');
-				地址 = parts[0] + ']';
-				端口 = parseInt(parts[1], 10) || 端口;
-			} else if (str.includes(':') && !str.startsWith('[')) {
-				const colonIndex = str.lastIndexOf(':');
-				地址 = str.slice(0, colonIndex);
-				端口 = parseInt(str.slice(colonIndex + 1), 10) || 端口;
-			}
-			return [地址, 端口];
-		}
-
+	if (缓存反代IP !== proxyIP || !缓存反代解析数组 || 缓存反代解析数组.length === 0) {
 		const 反代IP数组 = await 整理成数组(proxyIP);
+		let 所有反代数组 = [];
 
 		// 将数组分块，避免并发请求过多导致Cloudflare Worker达到子请求限制 (最大50个)
 		const chunkSize = 5;
@@ -3432,23 +3422,6 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 					if (singleProxyIP.includes('.tp')) {
 						const tpMatch = singleProxyIP.match(/\.tp(\d+)/);
 						if (tpMatch) 端口 = parseInt(tpMatch[1], 10);
-		// 并行遍历数组中的每个IP元素进行处理
-		const 处理结果数组 = await Promise.all(反代IP数组.map(async (singleProxyIP) => {
-			let 当前反代数组 = [];
-			if (singleProxyIP.includes('.william')) {
-				try {
-					let txtRecords = await DoH查询(singleProxyIP, 'TXT');
-					let txtData = txtRecords.filter(r => r.type === 16).map(r => /** @type {string} */(r.data));
-					if (txtData.length === 0) {
-						log(`[反代解析] 默认DoH未获取到TXT记录，切换Google DoH重试 ${singleProxyIP}`);
-						txtRecords = await DoH查询(singleProxyIP, 'TXT', 'https://dns.google/dns-query');
-						txtData = txtRecords.filter(r => r.type === 16).map(r => /** @type {string} */(r.data));
-					}
-					if (txtData.length > 0) {
-						let data = txtData[0];
-						if (data.startsWith('"') && data.endsWith('"')) data = data.slice(1, -1);
-						const prefixes = data.replace(/\\010/g, ',').replace(/\n/g, ',').split(',').map(s => s.trim()).filter(Boolean);
-						当前反代数组.push(...prefixes.map(prefix => 解析地址端口字符串(prefix)));
 					}
 
 					// 判断是否是域名（非IP地址）
@@ -3486,13 +3459,6 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 					} else {
 						resultGroup.push([地址, 端口]);
 					}
-					if (ipAddresses.length > 0) {
-						当前反代数组.push(...ipAddresses.map(ip => [ip, 端口]));
-					} else {
-						当前反代数组.push([地址, 端口]);
-					}
-				} else {
-					当前反代数组.push([地址, 端口]);
 				}
 				return resultGroup;
 			}));
@@ -3500,9 +3466,8 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 			for (const group of chunkResults) {
 				所有反代数组.push(...group);
 			}
-			return 当前反代数组;
-		}));
-		const 所有反代数组 = 处理结果数组.flat();
+		}
+
 		const 排序后数组 = 所有反代数组.sort((a, b) => a[0].localeCompare(b[0]));
 		const 目标根域名 = 目标域名.includes('.') ? 目标域名.split('.').slice(-2).join('.') : 目标域名;
 		let 随机种子 = [...(目标根域名 + UUID)].reduce((a, c) => a + c.charCodeAt(0), 0);
