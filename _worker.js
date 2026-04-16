@@ -3332,8 +3332,12 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 
 		const 反代IP数组 = await 整理成数组(proxyIP);
 
-		// 并行遍历数组中的每个IP元素进行处理
-		const 处理结果数组 = await Promise.all(反代IP数组.map(async (singleProxyIP) => {
+		// 并行遍历数组中的每个IP元素进行处理，使用分块（Chunking）限制并发数，防止超过Cloudflare 50次子请求限制
+		const 处理结果数组 = [];
+		const 并发块大小 = 5; // 每次并发处理5个IP
+		for (let i = 0; i < 反代IP数组.length; i += 并发块大小) {
+			const 当前块 = 反代IP数组.slice(i, i + 并发块大小);
+			const 块结果 = await Promise.all(当前块.map(async (singleProxyIP) => {
 			let 当前反代数组 = [];
 			if (singleProxyIP.includes('.william')) {
 				try {
@@ -3399,6 +3403,8 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 			}
 			return 当前反代数组;
 		}));
+			处理结果数组.push(...块结果);
+		}
 		const 所有反代数组 = 处理结果数组.flat();
 		const 排序后数组 = 所有反代数组.sort((a, b) => a[0].localeCompare(b[0]));
 		const 目标根域名 = 目标域名.includes('.') ? 目标域名.split('.').slice(-2).join('.') : 目标域名;
