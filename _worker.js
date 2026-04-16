@@ -1786,6 +1786,9 @@ function isSpeedTestSite(hostname) {
 
 function 修正请求URL(url文本) {
 	url文本 = url文本.replace(/%5[Cc]/g, '').replace(/\\/g, '');
+
+	if (!url文本.includes('%3')) return url文本;
+
 	let 锚点索引 = url文本.indexOf('#');
 	if (锚点索引 === -1) 锚点索引 = url文本.length;
 
