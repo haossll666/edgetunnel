@@ -91,6 +91,32 @@ Every non-trivial session should follow this sequence:
    - What remains
    - Next recommended slice
 
+## Continuous Execution System
+
+The default operating mode for this repository is not "wait for the next user prompt after every small slice".
+
+Instead, agents should treat this project as a continuous execution system with bounded autonomy:
+
+1. Pull the next slice from the repo queue
+   - Read [docs/EXECUTION_SYSTEM.md](/Users/rock.xu/github/projects/ai-ml/edgetunnel/docs/EXECUTION_SYSTEM.md)
+   - Read [docs/NEXT_SLICE_QUEUE.md](/Users/rock.xu/github/projects/ai-ml/edgetunnel/docs/NEXT_SLICE_QUEUE.md)
+   - Execute the highest-priority unblocked slice
+2. Continue automatically while risk stays low
+   - Do not stop after every docs/test/admin-only slice
+   - Finish the current slice, verify it, tag it, push it, update the queue, then continue to the next low-risk slice when feasible
+3. Pause only at real decision boundaries
+   - pause if a change can affect `/sub`
+   - pause if a change can require the operator to re-add subscriptions
+   - pause if a change can add paid Cloudflare requirements or new hot-path dependencies
+   - pause if runtime behavior becomes uncertain or a verification result conflicts with expectations
+4. Keep the queue trustworthy
+   - Mark one item as `NOW`
+   - Keep a short `NEXT` list
+   - Keep deferred work in `LATER`
+   - Update status after each shipped slice
+
+The goal is to let future sessions resume from repo state alone, without reconstructing intent from chat history.
+
 ## Multi-Agent Coordination Rules
 
 ### Roles

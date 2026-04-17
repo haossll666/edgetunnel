@@ -17,6 +17,11 @@ This document is for **sequenced, multi-agent execution**, not for trying to com
 
 Work should move in small vertical slices with explicit checkpoints.
 
+Continuous execution state lives in:
+
+- [docs/EXECUTION_SYSTEM.md](/Users/rock.xu/github/projects/ai-ml/edgetunnel/docs/EXECUTION_SYSTEM.md)
+- [docs/NEXT_SLICE_QUEUE.md](/Users/rock.xu/github/projects/ai-ml/edgetunnel/docs/NEXT_SLICE_QUEUE.md)
+
 ## Architecture Decisions
 
 - Reliability is more important than feature breadth
