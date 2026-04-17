@@ -124,14 +124,14 @@ This is the highest-leverage slice because it affects the operator's day-to-day 
 **Description:** Refactor configuration loading so the subscription path can read only what it needs, while Cloudflare usage, Telegram display data, and other admin-oriented enrichment stay out of the hot path.
 
 **Acceptance criteria:**
-- [x] `/sub` no longer requires admin-only enrichment work
-- [x] `读取config_JSON()` behavior is split or replaced by a clearer contract
-- [x] Response behavior stays compatible for existing subscription consumers
+- [ ] `/sub` no longer requires admin-only enrichment work
+- [ ] `读取config_JSON()` behavior is split or replaced by a clearer contract
+- [ ] Response behavior stays compatible for existing subscription consumers
 
 **Verification:**
-- [x] Relevant tests pass
-- [x] Targeted route smoke checks pass for the config-loading contract boundary
-- [x] Self-review confirms no new paid/external dependency was introduced
+- [ ] Relevant tests pass
+- [ ] Targeted route smoke checks pass for the config-loading contract boundary
+- [ ] Self-review confirms no new paid/external dependency was introduced
 
 **Dependencies:** Phase 0
 
@@ -143,7 +143,7 @@ This is the highest-leverage slice because it affects the operator's day-to-day 
 
 **Lane:** A
 
-**Status:** Completed in this session
+**Status:** Reverted after runtime regression report; needs redesign before retry
 
 ## Task 2: Reduce `/sub` hot-path KV/logging cost
 

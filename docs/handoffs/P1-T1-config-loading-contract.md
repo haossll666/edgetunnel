@@ -1,5 +1,7 @@
 # Handoff: P1-T1 Separate Base Config Loading From Admin Enrichment
 
+Status: superseded by rollback handoff `rollback-p1-t1-20260417.md`
+
 ## Slice
 
 - Task ID: P1-T1
