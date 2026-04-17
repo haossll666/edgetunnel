@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON } from '../_worker.js';
+import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON } from '../_worker.js';
+import { createKvMock } from './_kv-mock.mjs';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -92,28 +93,12 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 });
 
 test('读取config_JSON contract split (Base Config / Admin Extensions)', async (t) => {
-	const createMockKV = (values) => {
-		const gets = [];
-		const puts = [];
-		return {
-			gets,
-			puts,
-			get: async (key) => {
-				gets.push(key);
-				return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : null;
-			},
-			put: async (key, value) => {
-				puts.push([key, value]);
-			},
-		};
-	};
-
 	await t.test('should keep base config loading on config.json only', async () => {
-		const kv = createMockKV({});
-		const result = await 读取config_JSON({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0', false, false);
-		assert.deepEqual(kv.gets, ['config.json']);
-		assert.deepEqual(kv.puts.length, 1);
-		assert.equal(kv.puts[0][0], 'config.json');
+		const m = createKvMock({});
+		const result = await 读取config_JSON({ KV: m.kv }, 'example.com', 'uuid-123', 'UA/1.0', false, false);
+		assert.deepEqual(m.getCalls, ['config.json']);
+		assert.deepEqual(m.putCalls.length, 1);
+		assert.equal(m.putCalls[0][0], 'config.json');
 		assert.equal(result.HOST, 'example.com');
 		assert.equal(result.UUID, 'uuid-123');
 		assert.equal(result.TG.启用, false);
@@ -122,10 +107,11 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 
 	await t.test('should load tg.json and cf.json only when admin extensions are requested', async () => {
 		清理基础配置缓存();
-		const kv = createMockKV({
+		const m = createKvMock({
 			'tg.json': JSON.stringify({ BotToken: 'bot-secret', ChatID: 'chat-id' }),
 			'cf.json': JSON.stringify({ UsageAPI: 'https://example.com/usage' }),
 		});
+		const kv = m.kv;
 		const originalFetch = global.fetch;
 		global.fetch = async (input) => {
 			assert.equal(String(input), 'https://example.com/usage');
@@ -137,9 +123,9 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 
 		try {
 			const result = await 读取config_JSON({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0', false, true);
-			assert.deepEqual(kv.gets, ['config.json', 'tg.json', 'cf.json']);
-			assert.equal(kv.puts.length, 1);
-			assert.equal(kv.puts[0][0], 'config.json');
+			assert.deepEqual(m.getCalls, ['config.json', 'tg.json', 'cf.json']);
+			assert.equal(m.putCalls.length, 1);
+			assert.equal(m.putCalls[0][0], 'config.json');
 			assert.equal(result.TG.ChatID, 'chat-id');
 			assert.notEqual(result.TG.BotToken, 'bot-secret');
 			assert.equal(result.CF.Usage.success, true);
@@ -152,10 +138,11 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 	await t.test('should resolve Cloudflare usage credentials when admin extensions use account keys', async () => {
 		清理基础配置缓存();
 		清理配置缓存();
-		const kv = createMockKV({
+		const m = createKvMock({
 			'tg.json': JSON.stringify({ BotToken: 'bot-secret', ChatID: 'chat-id' }),
 			'cf.json': JSON.stringify({ Email: 'ops@example.com', GlobalAPIKey: 'global-key' }),
 		});
+		const kv = m.kv;
 		const originalFetch = global.fetch;
 		global.fetch = async (input, init) => {
 			const url = String(input);
@@ -233,16 +220,17 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 				Usage: { success: false, pages: 0, workers: 0, total: 0, max: 100000 },
 			},
 		};
-		const kv = createMockKV({
+		const m = createKvMock({
 			'config.json': JSON.stringify(configJson),
 		});
+		const kv = m.kv;
 		const originalNow = Date.now;
 		try {
 			Date.now = () => 3_000_000;
 			await 读取config_JSON({ KV: kv }, 'cached.example.com', 'uuid-abc', 'UA/1.0', false, false);
 			Date.now = () => 3_000_000 + 60_000;
 			await 读取config_JSON({ KV: kv }, 'cached.example.com', 'uuid-abc', 'UA/1.0', false, false);
-			assert.equal(kv.gets.filter(key => key === 'config.json').length, 1);
+			assert.equal(m.getCalls.filter(key => key === 'config.json').length, 1);
 		} finally {
 			Date.now = originalNow;
 		}
@@ -376,6 +364,34 @@ test('清理配置缓存 (Config Cache Reset)', async (t) => {
 		await 读取CF配置(env);
 		assert.equal(tgGets, 2);
 		assert.equal(cfGets, 2);
+	});
+});
+
+test('请求日志记录 — KV 写入 log.json (D3)', async (t) => {
+	await t.test('非 Get_SUB 首次写入应落盘 log.json', async () => {
+		const m = createKvMock({});
+		const env = { KV: m.kv };
+		const url = `https://example.com/admin?t=${Date.now()}`;
+		const base = new Request(url, { headers: { 'User-Agent': 'D3-kv-test' } });
+		const request = new Proxy(base, {
+			get(target, prop, receiver) {
+				if (prop === 'cf') return { asn: 13335, asOrganization: 'TestNet', country: 'US', city: 'Test' };
+				return Reflect.get(target, prop, receiver);
+			},
+		});
+		const config_JSON = {
+			TG: { 启用: false },
+			优选订阅生成: { SUBNAME: 'edge', SUBUpdateTime: 3 },
+			CF: { Usage: { success: false, total: 0, max: 100000 } },
+		};
+		await 请求日志记录(env, request, '198.51.100.2', 'D3_KV_Test', config_JSON, true);
+		assert.ok(m.getCalls.includes('log.json'));
+		const put = m.putCalls.find((p) => p[0] === 'log.json');
+		assert.ok(put);
+		const 日志数组 = JSON.parse(put[1]);
+		assert.ok(Array.isArray(日志数组));
+		assert.equal(日志数组[0].TYPE, 'D3_KV_Test');
+		assert.equal(日志数组[0].IP, '198.51.100.2');
 	});
 });
 
