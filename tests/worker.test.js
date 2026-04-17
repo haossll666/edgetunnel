@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 读取config_JSON } from '../_worker.js';
+import { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 读取config_JSON } from '../_worker.js';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -145,5 +145,17 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 		} finally {
 			global.fetch = originalFetch;
 		}
+	});
+});
+
+test('生成订阅稳定首项 (Stable Subscription First Entry)', async (t) => {
+	await t.test('should prepend the stable LINK once', () => {
+		const result = 生成订阅稳定首项({ LINK: 'vless://example@xsy2026.dpdns.org:443?security=tls#stable' });
+		assert.equal(result, 'vless://example@xsy2026.dpdns.org:443?security=tls#stable\n');
+	});
+
+	await t.test('should return empty string when LINK is missing', () => {
+		assert.equal(生成订阅稳定首项({}), '');
+		assert.equal(生成订阅稳定首项({ LINK: '   ' }), '');
 	});
 });

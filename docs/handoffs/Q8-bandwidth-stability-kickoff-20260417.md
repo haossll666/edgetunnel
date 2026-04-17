@@ -1,21 +1,25 @@
 ## Slice
-Bandwidth and stability optimization kickoff
+Stable-default node and route strategy
 
 ## Changed
-- Updated `docs/NEXT_SLICE_QUEUE.md` to introduce Q8 as the next bounded optimization sequence.
-- Defined the first planned follow-up slice around stable-default node and route behavior.
-- Deferred deeper hot-path observability and KV pressure review until the stable-default direction is clarified.
+- Added `生成订阅稳定首项()` in `_worker.js` so mixed subscriptions now prepend the stable `config_JSON.LINK` entry.
+- Kept the `/sub` subscription contract intact while making first-connect behavior less likely to start on a brittle IP node.
+- Added a focused test in `tests/worker.test.js` to lock the stable-first-entry contract.
+- Updated `docs/NEXT_SLICE_QUEUE.md` to mark the stable-default slice complete and queue the next hot-path observability review.
 
 ## Release Marker
 - Commit: pending
 - Tag: pending
 
 ## Verified
-- Documentation-only change; no runtime verification required yet.
+- `node --loader ./tests/loader.mjs --test tests/worker.test.js`
+- `node --test tests/security.test.js`
+- `node --test tests/admin_compatibility.test.js`
+- All passed.
 
 ## Risks / Open Questions
-- The next code slice should avoid touching `/sub` onboarding semantics unless a contract check is written first.
-- We still need to decide whether the first implementation slice is node ordering, route selection, or diagnostic-only.
+- The next slice should stay on the hot-path cost side and avoid re-opening the `/sub` contract.
+- We should decide whether the next optimization is logging pressure or route diagnostics first.
 
 ## Next Slice
-- Review the current default node strategy and pick the smallest safe optimization slice that improves first-connect stability.
+- Review `/sub` logging and KV pressure with the new stable-first ordering already in place.
