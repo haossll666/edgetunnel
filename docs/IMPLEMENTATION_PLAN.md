@@ -67,6 +67,12 @@ Primary files:
 - `README.md`
 - docs if needed
 
+Current safest slice:
+
+- add an admin-page fetch fallback only
+- preserve the authenticated redirect and QR onboarding contract
+- do not touch `/sub`, token generation, UUID mapping, or `config_JSON.LINK`
+
 ### Lane C: Test Harness and Verification
 
 Goal:
@@ -209,6 +215,7 @@ Checkpoint after Phase 1:
 - [ ] Docs reflect actual required variables
 - [ ] Security-sensitive fallback behavior is documented or tightened
 - [ ] Personal-use recommended defaults are explicit
+- [ ] The `/admin` QR-based subscription onboarding flow remains the documented default operator path
 
 **Verification:**
 - [ ] README and code behavior are consistent
