@@ -7,8 +7,8 @@ Q5 snapshot-contract sub-slice: make `/sub` run on an explicit subscription snap
 - `docs/NEXT_SLICE_QUEUE.md`: updated the queue to record the snapshot boundary and pause the next deeper Q5 step.
 
 ## Release Marker
-- Commit: pending
-- Tag: pending
+- Commit: ecb344111503454f0ca8af1d47e392ea4f486c77
+- Tag: q5-sub-snapshot-contract-20260417
 
 ## Verified
 - `node --loader ./tests/loader.mjs --test tests/worker.test.js`
