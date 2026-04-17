@@ -1,6 +1,6 @@
 const Version = '2026-04-10 06:03:17';
-/*In our project workflow, we first*/ import //the necessary modules, 
-/*then*/ { connect }//to the central server, 
+/*In our project workflow, we first*/ import //the necessary modules,
+/*then*/ { connect }//to the central server,
 /*and all data flows*/ from//this single source.
 	'cloudflare\u003asockets';
 let config_JSON, 反代IP = '', 启用SOCKS5反代 = null, 启用SOCKS5全局反代 = false, 我的SOCKS5账号 = '', parsedSocks5Address = {};
@@ -309,7 +309,7 @@ export default {
 							const { type: 传输协议, 路径字段名, 域名字段名 } = 获取传输协议配置(config_JSON);
 							订阅内容 = 其他节点LINK + 完整优选IP.map(原始地址 => {
 								// 统一正则: 匹配 域名/IPv4/IPv6地址 + 可选端口 + 可选备注
-								// 示例: 
+								// 示例:
 								//   - 域名: hj.xmm1993.top:2096#备注 或 example.com
 								//   - IPv4: 166.0.188.128:443#Los Angeles 或 166.0.188.128
 								//   - IPv6: [2606:4700::]:443#CMCC 或 [2606:4700::]
@@ -551,9 +551,9 @@ function 有效数据长度(data) {
 }
 
 async function 读取XHTTP首包(reader, token) {
-	const decoder = new TextDecoder();
+	const decoder = getGlobalTextDecoder('utf-8');
 	const 密码哈希 = sha224(token);
-	const 密码哈希字节 = new TextEncoder().encode(密码哈希);
+	const 密码哈希字节 = getGlobalTextEncoder().encode(密码哈希);
 
 	const 尝试解析VLESS首包 = (data) => {
 		const length = data.byteLength;
@@ -1342,7 +1342,7 @@ function 解析木马请求(buffer, passwordPlainText) {
 	if (uint8.byteLength < 56) return { hasError: true, message: "invalid data" };
 	let crLfIndex = 56;
 	if (uint8[56] !== 0x0d || uint8[57] !== 0x0a) return { hasError: true, message: "invalid header format" };
-	const password = new TextDecoder().decode(uint8.subarray(0, crLfIndex));
+	const password = getGlobalTextDecoder('utf-8').decode(uint8.subarray(0, crLfIndex));
 	if (password !== sha224Password) return { hasError: true, message: "invalid password" };
 
 	const socks5DataOffset = crLfIndex + 2;
@@ -1364,7 +1364,7 @@ function 解析木马请求(buffer, passwordPlainText) {
 		case 3: // Domain
 			addressLength = uint8[addressIndex];
 			addressIndex += 1;
-			address = new TextDecoder().decode(uint8.subarray(addressIndex, addressIndex + addressLength));
+			address = getGlobalTextDecoder('utf-8').decode(uint8.subarray(addressIndex, addressIndex + addressLength));
 			break;
 		case 4: // IPv6
 			addressLength = 16;
@@ -1417,7 +1417,7 @@ function 解析魏烈思请求(chunk, token) {
 		case 2:
 			addrLen = uint8[addrValIdx];
 			addrValIdx += 1;
-			hostname = new TextDecoder().decode(uint8.subarray(addrValIdx, addrValIdx + addrLen));
+			hostname = getGlobalTextDecoder('utf-8').decode(uint8.subarray(addrValIdx, addrValIdx + addrLen));
 			break;
 		case 3:
 			addrLen = 16;
@@ -1438,8 +1438,8 @@ const SS支持加密配置 = {
 };
 
 const SSAEAD标签长度 = 16, SSNonce长度 = 12;
-const SS子密钥信息 = new TextEncoder().encode('ss-subkey');
-const SS文本编码器 = new TextEncoder(), SS文本解码器 = new TextDecoder(), SS主密钥缓存 = new Map();
+const SS子密钥信息 = getGlobalTextEncoder().encode('ss-subkey');
+const SS文本编码器 = getGlobalTextEncoder(), SS文本解码器 = getGlobalTextDecoder('utf-8'), SS主密钥缓存 = new Map();
 const globalTextDecoders = new Map();
 function getGlobalTextDecoder(encoding) {
 	let decoder = globalTextDecoders.get(encoding);
@@ -1448,6 +1448,14 @@ function getGlobalTextDecoder(encoding) {
 		globalTextDecoders.set(encoding, decoder);
 	}
 	return decoder;
+}
+
+let globalTextEncoder = null;
+function getGlobalTextEncoder() {
+	if (!globalTextEncoder) {
+		globalTextEncoder = new TextEncoder();
+	}
+	return globalTextEncoder;
 }
 
 function SS数据转Uint8Array(data) {
@@ -1818,14 +1826,14 @@ async function socks5Connect(targetHost, targetPort, initialData) {
 		const selectedMethod = new Uint8Array(response.value)[1];
 		if (selectedMethod === 0x02) {
 			if (!username || !password) throw new Error('S5 requires authentication');
-			const userBytes = new TextEncoder().encode(username), passBytes = new TextEncoder().encode(password);
+			const userBytes = getGlobalTextEncoder().encode(username), passBytes = getGlobalTextEncoder().encode(password);
 			const authPacket = new Uint8Array([0x01, userBytes.length, ...userBytes, passBytes.length, ...passBytes]);
 			await writer.write(authPacket);
 			response = await reader.read();
 			if (response.done || new Uint8Array(response.value)[1] !== 0x00) throw new Error('S5 authentication failed');
 		} else if (selectedMethod !== 0x00) throw new Error(`S5 unsupported auth method: ${selectedMethod}`);
 
-		const hostBytes = new TextEncoder().encode(targetHost);
+		const hostBytes = getGlobalTextEncoder().encode(targetHost);
 		const connectPacket = new Uint8Array([0x05, 0x01, 0x00, 0x03, hostBytes.length, ...hostBytes, targetPort >> 8, targetPort & 0xff]);
 		await writer.write(connectPacket);
 		response = await reader.read();
@@ -1848,8 +1856,8 @@ async function httpConnect(targetHost, targetPort, initialData, HTTPS代理 = fa
 		? connect({ hostname, port }, { secureTransport: 'on', allowHalfOpen: false })
 		: connect({ hostname, port });
 	const writer = socket.writable.getWriter(), reader = socket.readable.getReader();
-	const encoder = new TextEncoder();
-	const decoder = new TextDecoder();
+	const encoder = getGlobalTextEncoder();
+	const decoder = getGlobalTextDecoder('utf-8');
 	try {
 		if (HTTPS代理) await socket.opened;
 
@@ -2409,7 +2417,7 @@ function 掩码敏感信息(文本, 前缀长度 = 3, 后缀长度 = 2) {
 }
 
 async function MD5MD5(文本) {
-	const 编码器 = new TextEncoder();
+	const 编码器 = getGlobalTextEncoder();
 
 	const 第一次哈希 = await crypto.subtle.digest('MD5', 编码器.encode(文本));
 	const 第一次哈希数组 = Array.from(new Uint8Array(第一次哈希));
@@ -2462,7 +2470,7 @@ async function DoH查询(域名, 记录类型, DoH解析服务 = "https://cloudf
 			const parts = name.endsWith('.') ? name.slice(0, -1).split('.') : name.split('.');
 			const bufs = [];
 			for (const label of parts) {
-				const enc = new TextEncoder().encode(label);
+				const enc = getGlobalTextEncoder().encode(label);
 				bufs.push(new Uint8Array([enc.length]), enc);
 			}
 			bufs.push(new Uint8Array([0]));
@@ -2519,7 +2527,7 @@ async function DoH查询(域名, 记录类型, DoH解析服务 = "https://cloudf
 					jumped = true;
 					continue;
 				}
-				labels.push(new TextDecoder().decode(buf.slice(p + 1, p + 1 + len)));
+				labels.push(getGlobalTextDecoder('utf-8').decode(buf.subarray(p + 1, p + 1 + len)));
 				p += len + 1;
 			}
 			if (endPos === -1) endPos = p + 1;
@@ -2560,7 +2568,7 @@ async function DoH查询(域名, 记录类型, DoH解析服务 = "https://cloudf
 				const parts = [];
 				while (tOff < rdlen) {
 					const tLen = rdata[tOff++];
-					parts.push(new TextDecoder().decode(rdata.slice(tOff, tOff + tLen)));
+					parts.push(getGlobalTextDecoder('utf-8').decode(rdata.subarray(tOff, tOff + tLen)));
 					tOff += tLen;
 				}
 				data = parts.join('');
@@ -3023,7 +3031,7 @@ async function 请求优选API(urls, 默认端口 = '443', 超时时间 = 3000) 
 			if (cleanText.length > 0 && cleanText.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(cleanText)) {
 				try {
 					const bytes = new Uint8Array(atob(cleanText).split('').map(c => c.charCodeAt(0)));
-					预处理订阅明文内容 = new TextDecoder('utf-8').decode(bytes);
+					预处理订阅明文内容 = getGlobalTextDecoder('utf-8').decode(bytes);
 				} catch { }
 			}
 			if (预处理订阅明文内容.split('#')[0].includes('://')) {
@@ -3431,7 +3439,7 @@ async function SOCKS5可用性验证(代理协议 = 'socks5', 代理参数) {
 				: await httpConnect('check.socks5.090227.xyz', 80, initialData));
 		if (!tcpSocket) return { success: false, error: '无法连接到代理服务器', proxy: 代理协议 + "://" + 完整代理参数, responseTime: Date.now() - startTime };
 		try {
-			const writer = tcpSocket.writable.getWriter(), encoder = new TextEncoder();
+			const writer = tcpSocket.writable.getWriter(), encoder = getGlobalTextEncoder();
 			await writer.write(encoder.encode(`GET /cdn-cgi/trace HTTP/1.1\r\nHost: check.socks5.090227.xyz\r\nConnection: close\r\n\r\n`));
 			writer.releaseLock();
 			const reader = tcpSocket.readable.getReader(), decoder = new TextDecoder();
@@ -3464,12 +3472,12 @@ async function nginx() {
 	<h1>Welcome to nginx!</h1>
 	<p>If you see this page, the nginx web server is successfully installed and
 	working. Further configuration is required.</p>
-	
+
 	<p>For online documentation and support please refer to
 	<a href="http://nginx.org/">nginx.org</a>.<br/>
 	Commercial support is available at
 	<a href="http://nginx.com/">nginx.com</a>.</p>
-	
+
 	<p><em>Thank you for using nginx.</em></p>
 	</body>
 	</html>
@@ -3522,24 +3530,24 @@ async function html1101(host, 访问IP) {
                 </h1>
                 <h2 class="cf-subheadline" data-translate="error_desc">Worker threw exception</h2>
             </div><!-- /.header -->
-    
+
             <section></section><!-- spacer -->
-    
+
             <div class="cf-section cf-wrapper">
                 <div class="cf-columns two">
                     <div class="cf-column">
                         <h2 data-translate="what_happened">What happened?</h2>
                             <p>You've requested a page on a website (${host}) that is on the <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=error_100x" target="_blank">Cloudflare</a> network. An unknown error occurred while rendering the page.</p>
                     </div>
-                    
+
                     <div class="cf-column">
                         <h2 data-translate="what_can_i_do">What can I do?</h2>
                             <p><strong>If you are the owner of this website:</strong><br />refer to <a href="https://developers.cloudflare.com/workers/observability/errors/" target="_blank">Workers - Errors and Exceptions</a> and check Workers Logs for ${host}.</p>
                     </div>
-                    
+
                 </div>
             </div><!-- /.section -->
-    
+
             <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
     <p class="text-13">
       <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold"> ${随机字符串}</strong></span>
@@ -3551,7 +3559,7 @@ async function html1101(host, 访问IP) {
         <span class="cf-footer-separator sm:hidden">&bull;</span>
       </span>
       <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing" id="brand_link" target="_blank">Cloudflare</a></span>
-      
+
     </p>
     <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
   </div><!-- /.error-footer -->
@@ -3561,9 +3569,9 @@ async function html1101(host, 访问IP) {
 
      <script>
     window._cf_translation = {};
-    
-    
-  </script> 
+
+
+  </script>
 </body>
 </html>`;
 }
