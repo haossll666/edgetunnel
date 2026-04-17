@@ -26,4 +26,12 @@ test('admin QR subscription onboarding contract', () => {
 		workerCode.includes('"Subscription-Userinfo": `upload=${pagesSum}; download=${workersSum}; total=${total}; expire=${expire}`'),
 		'subscription response must continue to emit the userinfo header in the expected format'
 	);
+	assert.ok(
+		workerCode.includes('Admin page fetch failed, falling back to local page:'),
+		'admin page delivery should keep a local fallback when Pages is unavailable'
+	);
+	assert.ok(
+		workerCode.includes('return new Response(await nginx()'),
+		'admin page fallback should remain local and not affect subscription contract'
+	);
 });
