@@ -175,6 +175,12 @@ This is the highest-leverage slice because it affects the operator's day-to-day 
 
 **Lane:** A
 
+Operator default for personal free-tier usage:
+
+- keep `OFF_LOG=1` unless you actively need logs
+- preserve admin/security visibility, but prefer minimal storage pressure over full-history retention
+- do not add new logging dependencies on `/sub`
+
 Checkpoint after Phase 1:
 
 - [ ] `/sub` is leaner than before
