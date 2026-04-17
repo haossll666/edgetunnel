@@ -6,8 +6,8 @@ Q5 iOS import stability fix: prefer a stable host-based subscription node before
 - `tests/worker.test.js`: added focused coverage for the stable-entry ordering helper while preserving the existing loader and compatibility contracts.
 
 ## Release Marker
-- Commit: pending
-- Tag: pending
+- Commit: 19219d2a628c979467228a6e4255ea6f77277966
+- Tag: q5-ios-stable-entry-20260417
 
 ## Verified
 - `node --loader ./tests/loader.mjs --test tests/worker.test.js`
