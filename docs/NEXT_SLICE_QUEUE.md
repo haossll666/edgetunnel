@@ -6,28 +6,21 @@ Update it after every shipped slice.
 
 ## NOW
 
-### Q4: Improve local worker verification entrypoint
-
-Goal:
-Make the safe local test command obvious so future sessions do not drift.
-
-Scope:
-
-- `tests/loader.mjs`
-- worker-related tests
-- docs
-
-Guardrails:
-
-- keep the worker-compatible local test command documented
-- keep route-level regression coverage in place
-
-## NEXT
-
 ### Q5: Redesign config-loading split for `/sub`
 
 Status:
 Blocked until the contract and verification story are stronger.
+
+Goal:
+Redesign config-loading so the subscription path can stay lean without risking `/sub` compatibility.
+
+Scope:
+
+- `_worker.js`
+- contract-first tests
+- supporting docs once the contract is clear
+
+## NEXT
 
 ### Q6: Reduce `/sub` KV logging cost directly
 

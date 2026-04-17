@@ -254,6 +254,8 @@ Checkpoint after Phase 2:
 
 **Description:** Make Cloudflare-runtime-compatible tests easier to run and extend so agents do not accidentally rely on broken local commands.
 
+**Documented command:** `node --loader ./tests/loader.mjs --test tests/worker.test.js`
+
 **Acceptance criteria:**
 - [ ] One documented command exists for worker-compatible local tests
 - [ ] Tests cover at least one route-level behavior tied to Phase 1 or Phase 2
