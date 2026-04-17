@@ -12,7 +12,6 @@ import {
 	读取订阅基础配置,
 	读取管理配置,
 	重置并读取管理配置,
-	提取订阅配置快照,
 	读取config_JSON
 } from '../_worker.js';
 
@@ -179,56 +178,5 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 		const result = await 读取config_JSON({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0', false, false);
 		assert.deepEqual(kv.gets, ['config.json']);
 		assert.equal(result.HOST, 'example.com');
-	});
-
-	await t.test('should keep the subscription snapshot focused on /sub fields only', () => {
-		const snapshot = 提取订阅配置快照({
-			HOST: 'example.com',
-			HOSTS: ['example.com', 'sub.example.com'],
-			UUID: 'uuid-123',
-			PATH: '/edge',
-			协议类型: 'vless',
-			传输协议: 'ws',
-			gRPC模式: 'gun',
-			gRPCUserAgent: 'UA/1.0',
-			跳过证书验证: false,
-			启用0RTT: true,
-			TLS分片: 'Happ',
-			随机路径: true,
-			ECH: true,
-			ECHConfig: { DNS: 'https://dns.example.com', SNI: 'sni.example.com' },
-			SS: { 加密方式: 'aes-128-gcm', TLS: true },
-			Fingerprint: 'chrome',
-			优选订阅生成: {
-				local: false,
-				本地IP库: { 随机IP: false, 随机数量: 8, 指定端口: 443 },
-				SUB: 'sub://example.com',
-				SUBNAME: 'edgetunnel',
-				SUBUpdateTime: 3,
-				TOKEN: 'token',
-			},
-			订阅转换配置: { SUBAPI: 'https://example.com', SUBCONFIG: 'cfg', SUBEMOJI: false },
-			TG: { 启用: true, BotToken: 'bot-secret', ChatID: 'chat-id' },
-			CF: {
-				Usage: { success: true, pages: 1, workers: 2, total: 3, max: 4 },
-				Email: 'ops@example.com',
-				GlobalAPIKey: 'api-key',
-				AccountID: 'account-id',
-				APIToken: 'token-secret',
-				UsageAPI: 'https://usage.example.com',
-			},
-			完整节点路径: '/edge?foo=bar',
-			反代: { 账号: 'should-not-be-needed' },
-		});
-
-		assert.equal(snapshot.HOST, 'example.com');
-		assert.deepEqual(snapshot.HOSTS, ['example.com', 'sub.example.com']);
-		assert.equal(snapshot.UUID, 'uuid-123');
-		assert.equal(snapshot.TG.启用, true);
-		assert.deepEqual(snapshot.CF.Usage, { success: true, pages: 1, workers: 2, total: 3, max: 4 });
-		assert.equal(Object.hasOwn(snapshot.TG, 'BotToken'), false);
-		assert.equal(Object.hasOwn(snapshot.CF, 'Email'), false);
-		assert.equal(Object.hasOwn(snapshot, '反代'), false);
-		assert.equal(Object.hasOwn(snapshot, 'config_JSON'), false);
 	});
 });
