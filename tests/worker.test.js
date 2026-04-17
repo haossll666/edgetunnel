@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 读取TG配置, 读取CF配置, 清理配置缓存, 读取config_JSON } from '../_worker.js';
+import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 读取config_JSON } from '../_worker.js';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -121,6 +121,7 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 	});
 
 	await t.test('should load tg.json and cf.json only when admin extensions are requested', async () => {
+		清理基础配置缓存();
 		const kv = createMockKV({
 			'tg.json': JSON.stringify({ BotToken: 'bot-secret', ChatID: 'chat-id' }),
 			'cf.json': JSON.stringify({ UsageAPI: 'https://example.com/usage' }),
@@ -145,6 +146,55 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 			assert.equal(result.CF.Usage.pages, 1);
 		} finally {
 			global.fetch = originalFetch;
+		}
+	});
+
+	await t.test('should reuse base config from memory within the cache window', async () => {
+		清理基础配置缓存();
+		const configJson = {
+			HOST: 'cached.example.com',
+			UUID: 'uuid-abc',
+			gRPCUserAgent: 'UA',
+			优选订阅生成: {
+				local: true,
+				本地IP库: { 随机IP: true, 随机数量: 16, 指定端口: -1 },
+				SUB: null,
+				SUBNAME: 'edge tunnel',
+				SUBUpdateTime: 3,
+				TOKEN: 'token',
+			},
+			订阅转换配置: { SUBAPI: 'https://example.com', SUBCONFIG: 'x', SUBEMOJI: false },
+			反代: {
+				auto: 'auto',
+				SOCKS5: { 启用: null, 全局: false, 账号: null, 白名单: [] },
+				路径模板: {
+					auto: 'proxyip={{IP:PORT}}',
+					SOCKS5: { 全局: 'socks5://{{IP:PORT}}', 标准: 'socks5={{IP:PORT}}' },
+					HTTP: { 全局: 'http://{{IP:PORT}}', 标准: 'http={{IP:PORT}}' },
+				},
+			},
+			TG: { 启用: false, BotToken: null, ChatID: null },
+			CF: {
+				Email: null,
+				GlobalAPIKey: null,
+				AccountID: null,
+				APIToken: null,
+				UsageAPI: null,
+				Usage: { success: false, pages: 0, workers: 0, total: 0, max: 100000 },
+			},
+		};
+		const kv = createMockKV({
+			'config.json': JSON.stringify(configJson),
+		});
+		const originalNow = Date.now;
+		try {
+			Date.now = () => 3_000_000;
+			await 读取config_JSON({ KV: kv }, 'cached.example.com', 'uuid-abc', 'UA/1.0', false, false);
+			Date.now = () => 3_000_000 + 60_000;
+			await 读取config_JSON({ KV: kv }, 'cached.example.com', 'uuid-abc', 'UA/1.0', false, false);
+			assert.equal(kv.gets.filter(key => key === 'config.json').length, 1);
+		} finally {
+			Date.now = originalNow;
 		}
 	});
 });
