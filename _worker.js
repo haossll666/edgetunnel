@@ -13,7 +13,7 @@ const 基础配置缓存 = new Map();
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
-export { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON };
+export { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值 };
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
@@ -67,7 +67,7 @@ export default {
 				} else if (访问路径 === 'login') {//处理登录页面和登录请求
 					const cookies = request.headers.get('Cookie') || '';
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
-					if (authCookie == await safeHash(UA + 加密秘钥 + 管理员密码)) return new Response('重定向中...', { status: 302, headers: { 'Location': '/admin' } });
+					if (authCookie === await 管理员会话Cookie值(request, env, UA, 加密秘钥, 管理员密码, 访问IP)) return new Response('重定向中...', { status: 302, headers: { 'Location': '/admin' } });
 					if (request.method === 'POST') {
 						const 访问IP限制键 = `login_attempts_${访问IP}`;
 						let 尝试次数 = 0;
@@ -90,7 +90,7 @@ export default {
 							// 密码正确，清零错误次数，设置cookie并返回成功标记
 							if (env.KV && typeof env.KV.put === 'function') await env.KV.delete(访问IP限制键);
 							const 响应 = new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-							响应.headers.set('Set-Cookie', `auth=${await safeHash(UA + 加密秘钥 + 管理员密码)}; Path=/; Max-Age=86400; HttpOnly; SameSite=Strict; Secure`);
+							响应.headers.set('Set-Cookie', `auth=${await 管理员会话Cookie值(request, env, UA, 加密秘钥, 管理员密码, 访问IP)}; Path=/; Max-Age=86400; HttpOnly; SameSite=Strict; Secure`);
 							return 响应;
 						} else {
 							// 密码错误，记录次数
@@ -107,7 +107,7 @@ export default {
 					const cookies = request.headers.get('Cookie') || '';
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
 					// 没有cookie或cookie错误，跳转到/login页面
-					if (!authCookie || authCookie !== await safeHash(UA + 加密秘钥 + 管理员密码)) return new Response('重定向中...', { status: 302, headers: { 'Location': '/login' } });
+					if (!authCookie || authCookie !== await 管理员会话Cookie值(request, env, UA, 加密秘钥, 管理员密码, 访问IP)) return new Response('重定向中...', { status: 302, headers: { 'Location': '/login' } });
 					if (访问路径 === 'admin/log.json') {// 读取日志内容
 						const 读取日志内容 = await env.KV.get('log.json') || '[]';
 						return new Response(读取日志内容, { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
@@ -422,7 +422,7 @@ export default {
 				} else if (访问路径 === 'locations') {//反代locations列表
 					const cookies = request.headers.get('Cookie') || '';
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
-					if (authCookie && authCookie == await safeHash(UA + 加密秘钥 + 管理员密码)) return fetch(new Request('https://speed.cloudflare.com/locations', { headers: { 'Referer': 'https://speed.cloudflare.com/' } }));
+					if (authCookie && authCookie === await 管理员会话Cookie值(request, env, UA, 加密秘钥, 管理员密码, 访问IP)) return fetch(new Request('https://speed.cloudflare.com/locations', { headers: { 'Referer': 'https://speed.cloudflare.com/' } }));
 				} else if (访问路径 === 'robots.txt') return new Response('User-agent: *\nDisallow: /', { status: 200, headers: { 'Content-Type': 'text/plain; charset=UTF-8' } });
 			} else if (!envUUID) return await 获取Pages页面或本地兜底('/noKV', 生成本地NoKV页HTML(url.host), 404);
 		}
@@ -2747,6 +2747,49 @@ async function safeHash(文本) {
 	const 十六进制 = 哈希数组.map(字节 => 字节.toString(16).padStart(2, '0')).join('');
 
 	return 十六进制.toLowerCase();
+}
+
+function 展开IPv6为完整8段(raw) {
+	let s = String(raw).replace(/^\[|\]$/g, '').trim();
+	if (!s.includes(':')) return null;
+	const parts = s.split('::');
+	if (parts.length > 2) return null;
+	const left = parts[0] ? parts[0].split(':').filter(Boolean) : [];
+	const right = parts[1] ? parts[1].split(':').filter(Boolean) : [];
+	const missing = 8 - left.length - right.length;
+	if (missing < 0) return null;
+	const mid = new Array(missing).fill('0');
+	return [...left, ...mid, ...right].map(h => h.padStart(4, '0'));
+}
+
+function 管理员IP绑定模式(env) {
+	const v = (env.ADMIN_IP_BIND || 'relaxed').toString().toLowerCase().trim();
+	if (v === 'strict' || v === 'relaxed' || v === 'off') return v;
+	return 'relaxed';
+}
+
+function 严格模式IP绑定材料(访问IP) {
+	if (!访问IP || 访问IP === '未知IP') return 'unknown';
+	const ip = String(访问IP).trim();
+	if (ip.includes('.')) {
+		const segs = ip.split('.');
+		if (segs.length >= 3) return `v4:${segs[0]}.${segs[1]}.${segs[2]}.0/24`;
+		return `v4:${ip}`;
+	}
+	const full = 展开IPv6为完整8段(ip);
+	if (!full) return `v6:${ip}`;
+	return `v6:${full.slice(0, 4).join(':')}::/64`;
+}
+
+function relaxed模式绑定材料(request) {
+	return `asn:${request.cf?.asn ?? '0'}`;
+}
+
+async function 管理员会话Cookie值(request, env, UA, 加密秘钥, 管理员密码, 访问IP) {
+	const mode = 管理员IP绑定模式(env);
+	if (mode === 'off') return await safeHash(UA + 加密秘钥 + 管理员密码);
+	const mat = mode === 'strict' ? 严格模式IP绑定材料(访问IP) : relaxed模式绑定材料(request);
+	return await safeHash(UA + 加密秘钥 + 管理员密码 + '\x00IP_BIND\x00' + mat);
 }
 
 function 随机路径(完整节点路径 = "/") {

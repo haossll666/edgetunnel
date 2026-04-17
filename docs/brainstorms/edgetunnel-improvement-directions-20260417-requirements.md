@@ -207,6 +207,8 @@ CF 免费层的硬性约束见 §1.3（10 ms CPU、50 外部 subrequest、WS idl
 
 #### C1. 登录 token 绑定 IP / IP 段
 
+- **Done（实现）**：环境变量 `ADMIN_IP_BIND`（`off` / `relaxed` / `strict`，默认 `relaxed`），详见 README；`relaxed` 用 `cf.asn`，`strict` 用 IPv4 `/24` 与 IPv6 `/64`；零新增 KV 写。
+
 - Motivation：admin cookie 若被泄露，目前可以跨 IP 直接使用
 - Core idea：
   - 登录时把 `CF-Connecting-IP` 的前缀写入 cookie 载荷：IPv4 按 `/24`，**IPv6 按 `/64`**（同一移动/家宽子网），避免 v6 场景下静默 no-op

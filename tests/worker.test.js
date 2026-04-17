@@ -1,7 +1,56 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON } from '../_worker.js';
+import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值 } from '../_worker.js';
 import { createKvMock } from './_kv-mock.mjs';
+
+test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
+	await t.test('管理员IP绑定模式 默认 relaxed', () => {
+		assert.equal(管理员IP绑定模式({}), 'relaxed');
+		assert.equal(管理员IP绑定模式({ ADMIN_IP_BIND: 'STRICT' }), 'strict');
+		assert.equal(管理员IP绑定模式({ ADMIN_IP_BIND: 'off' }), 'off');
+	});
+
+	await t.test('strict：IPv4 /24 材料', () => {
+		assert.equal(严格模式IP绑定材料('192.168.1.10'), 'v4:192.168.1.0/24');
+	});
+
+	await t.test('strict：IPv6 /64 材料', () => {
+		assert.match(严格模式IP绑定材料('2001:db8::1'), /^v6:2001:0db8:0000:0000::\/64$/i);
+	});
+
+	await t.test('strict：同网段同 cookie，跨网段不同', async () => {
+		const env = { ADMIN_IP_BIND: 'strict', KEY: 'k', ADMIN: 'p' };
+		const a = await 管理员会话Cookie值(new Request('https://h/'), env, 'ua', 'k', 'p', '10.0.0.1');
+		const b = await 管理员会话Cookie值(new Request('https://h/'), env, 'ua', 'k', 'p', '10.0.0.200');
+		const c = await 管理员会话Cookie值(new Request('https://h/'), env, 'ua', 'k', 'p', '10.0.1.1');
+		assert.equal(a, b);
+		assert.notEqual(a, c);
+	});
+
+	await t.test('relaxed：同 ASN 同 cookie', async () => {
+		const env = { ADMIN_IP_BIND: 'relaxed', KEY: 'k', ADMIN: 'p' };
+		const mk = (ip) => {
+			const base = new Request('https://h/', { headers: { 'CF-Connecting-IP': ip } });
+			return new Proxy(base, {
+				get(target, prop, receiver) {
+					if (prop === 'cf') return { asn: 13335 };
+					return Reflect.get(target, prop, receiver);
+				},
+			});
+		};
+		const a = await 管理员会话Cookie值(mk('1.1.1.1'), env, 'ua', 'k', 'p', '1.1.1.1');
+		const b = await 管理员会话Cookie值(mk('8.8.8.8'), env, 'ua', 'k', 'p', '8.8.8.8');
+		assert.equal(a, b);
+	});
+
+	await t.test('off：与无绑定材料时哈希一致', async () => {
+		const env = { ADMIN_IP_BIND: 'off', KEY: 'k', ADMIN: 'p' };
+		const r = new Request('https://h/', { headers: { 'CF-Connecting-IP': '9.9.9.9' }, cf: { asn: 1 } });
+		const withBind = await 管理员会话Cookie值(r, env, 'ua', 'k', 'p', '9.9.9.9');
+		const noBind = await 管理员会话Cookie值(r, { ...env, ADMIN_IP_BIND: 'off' }, 'ua', 'k', 'p', '1.1.1.1');
+		assert.equal(withBind, noBind);
+	});
+});
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
