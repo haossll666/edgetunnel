@@ -1,6 +1,6 @@
 const Version = '2026-04-10 06:03:17';
-/*In our project workflow, we first*/ import //the necessary modules,
-/*then*/ { connect }//to the central server,
+/*In our project workflow, we first*/ import //the necessary modules, 
+/*then*/ { connect }//to the central server, 
 /*and all data flows*/ from//this single source.
 	'cloudflare\u003asockets';
 let config_JSON, 反代IP = '', 启用SOCKS5反代 = null, 启用SOCKS5全局反代 = false, 我的SOCKS5账号 = '', parsedSocks5Address = {};
@@ -19,10 +19,10 @@ export default {
 		}
 		const 管理员密码 = env.ADMIN || env.admin || env.PASSWORD || env.password || env.pswd || env.TOKEN || env.KEY || env.UUID || env.uuid;
 		const 加密秘钥 = env.KEY;
-		const userIDMD5 = await safeHash(管理员密码 + 加密秘钥);
+		const userIDHash = await safeHash(管理员密码 + 加密秘钥);
 		const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 		const envUUID = env.UUID || env.uuid;
-		const userID = (envUUID && uuidRegex.test(envUUID)) ? envUUID.toLowerCase() : [userIDMD5.slice(0, 8), userIDMD5.slice(8, 12), '4' + userIDMD5.slice(13, 16), '8' + userIDMD5.slice(17, 20), userIDMD5.slice(20, 32)].join('-');
+		const userID = (envUUID && uuidRegex.test(envUUID)) ? envUUID.toLowerCase() : [userIDHash.slice(0, 8), userIDHash.slice(8, 12), '4' + userIDHash.slice(13, 16), '8' + userIDHash.slice(17, 20), userIDHash.slice(20, 32)].join('-');
 		const hosts = env.HOST ? (await 整理成数组(env.HOST)).map(h => { const m = h.match(/^(?:https?:\/\/)?([^/:]+)/i); return (m ? m[1] : h).toLowerCase(); }) : [url.hostname];
 		const host = hosts[0];
 		const 访问路径 = url.pathname.slice(1).toLowerCase();
@@ -310,7 +310,7 @@ export default {
 							const { type: 传输协议, 路径字段名, 域名字段名 } = 获取传输协议配置(config_JSON);
 							订阅内容 = 其他节点LINK + 完整优选IP.map(原始地址 => {
 								// 统一正则: 匹配 域名/IPv4/IPv6地址 + 可选端口 + 可选备注
-								// 示例:
+								// 示例: 
 								//   - 域名: hj.xmm1993.top:2096#备注 或 example.com
 								//   - IPv4: 166.0.188.128:443#Los Angeles 或 166.0.188.128
 								//   - IPv6: [2606:4700::]:443#CMCC 或 [2606:4700::]
@@ -394,7 +394,12 @@ export default {
 			新请求头.set('Origin', 反代URL.origin);
 			if (!新请求头.has('User-Agent') && UA && UA !== 'null') 新请求头.set('User-Agent', UA);
 			const 实际反代URL = new URL(反代URL.href);
-			实际反代URL.pathname = url.pathname;
+			let 安全路径 = url.pathname;
+			while (安全路径.includes('//')) {
+				let idx = 安全路径.indexOf('//');
+				安全路径 = 安全路径.slice(0, idx) + '/' + 安全路径.slice(idx + 2);
+			}
+			实际反代URL.pathname = 安全路径;
 			实际反代URL.search = url.search;
 			const 反代响应 = await fetch(实际反代URL.href, { method: request.method, headers: 新请求头, body: request.body, cf: request.cf });
 			const 内容类型 = 反代响应.headers.get('content-type') || '';
@@ -1786,6 +1791,9 @@ function isSpeedTestSite(hostname) {
 
 function 修正请求URL(url文本) {
 	url文本 = url文本.replace(/%5[Cc]/g, '').replace(/\\/g, '');
+
+	if (!url文本.includes('%3')) return url文本;
+
 	let 锚点索引 = url文本.indexOf('#');
 	if (锚点索引 === -1) 锚点索引 = url文本.length;
 
@@ -3379,24 +3387,9 @@ function sha224(s) {
 }
 
 async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com', UUID = '00000000-0000-4000-8000-000000000000') {
-	if (!缓存反代IP || !缓存反代解析数组 || 缓存反代IP !== proxyIP) {
-		proxyIP = proxyIP.toLowerCase();
-
-		function 解析地址端口字符串(str) {
-			let 地址 = str, 端口 = 443;
-			if (str.includes(']:')) {
-				const parts = str.split(']:');
-				地址 = parts[0] + ']';
-				端口 = parseInt(parts[1], 10) || 端口;
-			} else if (str.includes(':') && !str.startsWith('[')) {
-				const colonIndex = str.lastIndexOf(':');
-				地址 = str.slice(0, colonIndex);
-				端口 = parseInt(str.slice(colonIndex + 1), 10) || 端口;
-			}
-			return [地址, 端口];
-		}
-
+	if (缓存反代IP !== proxyIP || !缓存反代解析数组 || 缓存反代解析数组.length === 0) {
 		const 反代IP数组 = await 整理成数组(proxyIP);
+		let 所有反代数组 = [];
 
 		// 将数组分块，避免并发请求过多导致Cloudflare Worker达到子请求限制 (最大50个)
 		const chunkSize = 5;
@@ -3474,6 +3467,7 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 				所有反代数组.push(...group);
 			}
 		}
+
 		const 排序后数组 = 所有反代数组.sort((a, b) => a[0].localeCompare(b[0]));
 		const 目标根域名 = 目标域名.includes('.') ? 目标域名.split('.').slice(-2).join('.') : 目标域名;
 		let 随机种子 = [...(目标根域名 + UUID)].reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -3533,12 +3527,12 @@ async function nginx() {
 	<h1>Welcome to nginx!</h1>
 	<p>If you see this page, the nginx web server is successfully installed and
 	working. Further configuration is required.</p>
-
+	
 	<p>For online documentation and support please refer to
 	<a href="http://nginx.org/">nginx.org</a>.<br/>
 	Commercial support is available at
 	<a href="http://nginx.com/">nginx.com</a>.</p>
-
+	
 	<p><em>Thank you for using nginx.</em></p>
 	</body>
 	</html>
@@ -3591,24 +3585,24 @@ async function html1101(host, 访问IP) {
                 </h1>
                 <h2 class="cf-subheadline" data-translate="error_desc">Worker threw exception</h2>
             </div><!-- /.header -->
-
+    
             <section></section><!-- spacer -->
-
+    
             <div class="cf-section cf-wrapper">
                 <div class="cf-columns two">
                     <div class="cf-column">
                         <h2 data-translate="what_happened">What happened?</h2>
                             <p>You've requested a page on a website (${host}) that is on the <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=error_100x" target="_blank">Cloudflare</a> network. An unknown error occurred while rendering the page.</p>
                     </div>
-
+                    
                     <div class="cf-column">
                         <h2 data-translate="what_can_i_do">What can I do?</h2>
                             <p><strong>If you are the owner of this website:</strong><br />refer to <a href="https://developers.cloudflare.com/workers/observability/errors/" target="_blank">Workers - Errors and Exceptions</a> and check Workers Logs for ${host}.</p>
                     </div>
-
+                    
                 </div>
             </div><!-- /.section -->
-
+    
             <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
     <p class="text-13">
       <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold"> ${随机字符串}</strong></span>
@@ -3620,7 +3614,7 @@ async function html1101(host, 访问IP) {
         <span class="cf-footer-separator sm:hidden">&bull;</span>
       </span>
       <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing" id="brand_link" target="_blank">Cloudflare</a></span>
-
+      
     </p>
     <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
   </div><!-- /.error-footer -->
@@ -3630,9 +3624,9 @@ async function html1101(host, 访问IP) {
 
      <script>
     window._cf_translation = {};
-
-
-  </script>
+    
+    
+  </script> 
 </body>
 </html>`;
 }
