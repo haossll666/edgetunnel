@@ -23,7 +23,6 @@ export {
 	读取管理配置,
 	重置并读取管理配置,
 	提取订阅配置快照,
-	构建稳定订阅入口优先列表,
 	读取config_JSON
 };
 export default {
@@ -348,7 +347,7 @@ export default {
 								其他节点LINK = 合并其他节点数组.length > 0 ? 合并其他节点数组.join('\n') + '\n' : '';
 								const 优选API的IP = 请求优选API内容[0];
 								反代IP池 = 请求优选API内容[3] || [];
-								完整优选IP = 构建稳定订阅入口优先列表(host, (协议类型 === 'ss' && !config_JSON.SS.TLS) ? '80' : '443', 优选IP.concat(优选API的IP));
+								完整优选IP = [...new Set(优选IP.concat(优选API的IP))];
 							} else { // 优选订阅生成器
 								let 优选订阅生成器HOST = url.searchParams.get('sub') || config_JSON.优选订阅生成.SUB;
 								const [优选生成器IP数组, 优选生成器其他节点] = await 获取优选订阅生成器数据(优选订阅生成器HOST);
@@ -2927,14 +2926,6 @@ function 提取订阅配置快照(config_JSON = {}) {
 		},
 		完整节点路径: config_JSON.完整节点路径,
 	};
-}
-
-function 构建稳定订阅入口优先列表(host, 默认端口, 原始列表 = []) {
-	const 去重列表 = [...new Set((Array.isArray(原始列表) ? 原始列表 : []).filter(Boolean))];
-	if (!host || typeof host !== 'string') return 去重列表;
-	const 稳定入口 = `${host}:${默认端口}#${host} 稳定入口`;
-	const 不含稳定入口 = 去重列表.filter(地址 => 地址.split('#')[0] !== `${host}:${默认端口}`);
-	return [稳定入口, ...不含稳定入口];
 }
 
 async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重置配置 = false, 包含管理扩展 = false) {
