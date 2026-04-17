@@ -22,6 +22,7 @@ export {
 	读取订阅基础配置,
 	读取管理配置,
 	重置并读取管理配置,
+	提取订阅配置快照,
 	读取config_JSON
 };
 export default {
@@ -267,7 +268,7 @@ export default {
 				} else if (访问路径 === 'sub') {//处理订阅请求
 					const 订阅TOKEN = await safeHash(host + userID), 作为优选订阅生成器 = ['1', 'true'].includes(env.BEST_SUB) && url.searchParams.get('host') === 'example.com' && url.searchParams.get('uuid') === '00000000-0000-4000-8000-000000000000' && UA.toLowerCase().includes('tunnel (https://github.com/cmliu/edge');
 					if (url.searchParams.get('token') === 订阅TOKEN || 作为优选订阅生成器) {
-						config_JSON = await 读取订阅基础配置(env, host, userID, UA);
+						config_JSON = 提取订阅配置快照(await 读取订阅基础配置(env, host, userID, UA));
 						if (作为优选订阅生成器) ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Get_Best_SUB', config_JSON, false));
 						else ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Get_SUB', config_JSON));
 						const ua = UA.toLowerCase();
@@ -2867,6 +2868,64 @@ async function 读取管理配置(env, hostname, userID, UA = "Mozilla/5.0") {
 
 async function 重置并读取管理配置(env, hostname, userID, UA = "Mozilla/5.0") {
 	return 读取config_JSON(env, hostname, userID, UA, true, true);
+}
+
+function 提取订阅配置快照(config_JSON = {}) {
+	return {
+		HOST: config_JSON.HOST,
+		HOSTS: Array.isArray(config_JSON.HOSTS) ? [...config_JSON.HOSTS] : [],
+		UUID: config_JSON.UUID,
+		PATH: config_JSON.PATH,
+		协议类型: config_JSON.协议类型,
+		传输协议: config_JSON.传输协议,
+		gRPC模式: config_JSON.gRPC模式,
+		gRPCUserAgent: config_JSON.gRPCUserAgent,
+		跳过证书验证: config_JSON.跳过证书验证,
+		启用0RTT: config_JSON.启用0RTT,
+		TLS分片: config_JSON.TLS分片,
+		随机路径: config_JSON.随机路径,
+		ECH: config_JSON.ECH,
+		ECHConfig: config_JSON.ECHConfig ? { ...config_JSON.ECHConfig } : { DNS: null, SNI: null },
+		SS: config_JSON.SS ? { ...config_JSON.SS } : { 加密方式: "aes-128-gcm", TLS: false },
+		Fingerprint: config_JSON.Fingerprint,
+		优选订阅生成: config_JSON.优选订阅生成 ? {
+			...config_JSON.优选订阅生成,
+			本地IP库: config_JSON.优选订阅生成.本地IP库 ? { ...config_JSON.优选订阅生成.本地IP库 } : {
+				随机IP: true,
+				随机数量: 16,
+				指定端口: -1,
+			},
+		} : {
+			local: true,
+			本地IP库: {
+				随机IP: true,
+				随机数量: 16,
+				指定端口: -1,
+			},
+			SUB: null,
+			SUBNAME: "edge" + "tunnel",
+			SUBUpdateTime: 3,
+			TOKEN: null,
+		},
+		订阅转换配置: config_JSON.订阅转换配置 ? { ...config_JSON.订阅转换配置 } : {
+			SUBAPI: "https://SUBAPI.cmliussss.net",
+			SUBCONFIG: "https://raw.githubusercontent.com/cmliu/ACL4SSR/refs/heads/main/Clash/config/ACL4SSR_Online_Mini_MultiMode_CF.ini",
+			SUBEMOJI: false,
+		},
+		TG: {
+			启用: config_JSON.TG?.启用 ? true : false,
+		},
+		CF: {
+			Usage: config_JSON.CF?.Usage ? { ...config_JSON.CF.Usage } : {
+				success: false,
+				pages: 0,
+				workers: 0,
+				total: 0,
+				max: 100000,
+			},
+		},
+		完整节点路径: config_JSON.完整节点路径,
+	};
 }
 
 async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重置配置 = false, 包含管理扩展 = false) {
