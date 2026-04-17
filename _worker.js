@@ -9,7 +9,7 @@ const 非SUB日志最近写入缓存 = new Map();
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
-export { 掩码敏感信息, 是否跳过非SUB日志KV写入 };
+export { 掩码敏感信息, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML };
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
@@ -53,7 +53,7 @@ export default {
 			return await 处理XHTTP请求(request, userID);
 		} else {
 			if (url.protocol === 'http:') return Response.redirect(url.href.replace(`http://${url.hostname}`, `https://${url.hostname}`), 301);
-			if (!管理员密码) return fetch(Pages静态页面 + '/noADMIN').then(r => { const headers = new Headers(r.headers); headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate'); headers.set('Pragma', 'no-cache'); headers.set('Expires', '0'); return new Response(r.body, { status: 404, statusText: r.statusText, headers }) });
+			if (!管理员密码) return await 获取Pages页面或本地兜底('/noADMIN', 生成本地NoADMIN页HTML(url.host), 404);
 			if (env.KV && typeof env.KV.get === 'function') {
 				const 区分大小写访问路径 = url.pathname.slice(1);
 				if (区分大小写访问路径 === 加密秘钥) {//快速订阅
@@ -98,7 +98,7 @@ export default {
 							return new Response(JSON.stringify({ error: '密码错误' }), { status: 401, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 						}
 					}
-					return fetch(Pages静态页面 + '/login');
+					return await 获取Pages页面或本地兜底('/login', 生成本地登录页HTML(url.host), 200);
 				} else if (访问路径 === 'admin' || 访问路径.startsWith('admin/')) {//验证cookie后响应管理页面
 					const cookies = request.headers.get('Cookie') || '';
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
@@ -415,7 +415,7 @@ export default {
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
 					if (authCookie && authCookie == await safeHash(UA + 加密秘钥 + 管理员密码)) return fetch(new Request('https://speed.cloudflare.com/locations', { headers: { 'Referer': 'https://speed.cloudflare.com/' } }));
 				} else if (访问路径 === 'robots.txt') return new Response('User-agent: *\nDisallow: /', { status: 200, headers: { 'Content-Type': 'text/plain; charset=UTF-8' } });
-			} else if (!envUUID) return fetch(Pages静态页面 + '/noKV').then(r => { const headers = new Headers(r.headers); headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate'); headers.set('Pragma', 'no-cache'); headers.set('Expires', '0'); return new Response(r.body, { status: 404, statusText: r.statusText, headers }) });
+			} else if (!envUUID) return await 获取Pages页面或本地兜底('/noKV', 生成本地NoKV页HTML(url.host), 404);
 		}
 
 		let 伪装页URL = env.URL || 'nginx';
@@ -2457,6 +2457,125 @@ function 是否跳过非SUB日志KV写入(日志内容) {
 		console.error(`非SUB日志缓存判断失败: ${error.message}`);
 		return false;
 	}
+}
+
+async function 获取Pages页面或本地兜底(路径, 本地HTML, 状态码 = 200, fetchFn = fetch) {
+	try {
+		const response = await fetchFn(Pages静态页面 + 路径);
+		const headers = new Headers(response.headers);
+		headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+		headers.set('Pragma', 'no-cache');
+		headers.set('Expires', '0');
+		return new Response(response.body, { status: 状态码, statusText: response.statusText, headers });
+	} catch (error) {
+		console.error(`Pages 页面兜底失败 ${路径}: ${error.message}`);
+		return new Response(本地HTML, {
+			status: 状态码,
+			headers: {
+				'Content-Type': 'text/html; charset=UTF-8',
+				'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+				'Pragma': 'no-cache',
+				'Expires': '0',
+			},
+		});
+	}
+}
+
+function 转义HTML(内容) {
+	if (内容 === null || 内容 === undefined) return '';
+	return String(内容)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+function 生成本地登录页HTML(host) {
+	return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>edgetunnel 登录</title>
+	<style>
+		body { margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; display: grid; min-height: 100vh; place-items: center; }
+		main { width: min(92vw, 420px); background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 18px; padding: 28px; box-shadow: 0 20px 60px rgba(15, 23, 42, 0.45); }
+		h1 { margin: 0 0 12px; font-size: 28px; }
+		p { line-height: 1.6; color: #cbd5e1; }
+		label { display: block; margin: 18px 0 8px; font-size: 14px; color: #94a3b8; }
+		input { width: 100%; box-sizing: border-box; border: 1px solid #334155; border-radius: 12px; padding: 12px 14px; background: #0b1120; color: #f8fafc; }
+		button, a.button { display: inline-block; margin-top: 16px; border: 0; border-radius: 999px; padding: 12px 16px; background: #38bdf8; color: #082f49; font-weight: 700; text-decoration: none; cursor: pointer; }
+		.meta { margin-top: 14px; font-size: 13px; color: #94a3b8; }
+	</style>
+</head>
+<body>
+	<main>
+		<h1>登录后台</h1>
+		<p>外部 Pages 登录页暂时不可用，但 Worker 本地兜底仍可继续登录 <strong>${转义HTML(host)}</strong>。</p>
+		<form method="post" action="/login">
+			<label for="password">管理员密码</label>
+			<input id="password" name="password" type="password" autocomplete="current-password" required />
+			<button type="submit">登录</button>
+		</form>
+		<p class="meta">如果登录成功，浏览器会跳转到 <code>/admin</code>，随后可以继续扫码添加订阅。</p>
+	</main>
+</body>
+</html>`;
+}
+
+function 生成本地NoADMIN页HTML(host) {
+	return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>edgetunnel 未配置 ADMIN</title>
+	<style>
+		body { margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #111827; color: #e5e7eb; display: grid; min-height: 100vh; place-items: center; }
+		main { width: min(92vw, 520px); background: rgba(17, 24, 39, 0.9); border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 18px; padding: 28px; }
+		h1 { margin: 0 0 12px; font-size: 28px; }
+		p { line-height: 1.7; color: #cbd5e1; }
+		code { background: rgba(15, 23, 42, 0.9); padding: 0 6px; border-radius: 6px; }
+		a.button { display: inline-block; margin-top: 16px; border-radius: 999px; padding: 12px 16px; background: #22c55e; color: #052e16; font-weight: 700; text-decoration: none; }
+	</style>
+</head>
+<body>
+	<main>
+		<h1>还没有配置 ADMIN</h1>
+		<p>当前站点 <strong>${转义HTML(host)}</strong> 还没有可用的管理员密码，所以无法打开后台登录页。</p>
+		<p>请先在 Cloudflare Workers 或 Pages 中设置环境变量 <code>ADMIN</code>，并确认 <code>KV</code> 已绑定，然后再访问 <code>/admin</code> 扫码添加订阅。</p>
+		<a class="button" href="https://github.com/cmliu/edgetunnel#%EF%B8%8F-workers-%E9%83%A8%E7%BD%B2">查看部署说明</a>
+	</main>
+</body>
+</html>`;
+}
+
+function 生成本地NoKV页HTML(host) {
+	return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>edgetunnel 未绑定 KV</title>
+	<style>
+		body { margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: linear-gradient(135deg, #0f172a, #1e293b); color: #e2e8f0; display: grid; min-height: 100vh; place-items: center; }
+		main { width: min(92vw, 520px); background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 18px; padding: 28px; }
+		h1 { margin: 0 0 12px; font-size: 28px; }
+		p { line-height: 1.7; color: #cbd5e1; }
+		code { background: rgba(15, 23, 42, 0.9); padding: 0 6px; border-radius: 6px; }
+		a.button { display: inline-block; margin-top: 16px; border-radius: 999px; padding: 12px 16px; background: #38bdf8; color: #082f49; font-weight: 700; text-decoration: none; }
+	</style>
+</head>
+<body>
+	<main>
+		<h1>还没有绑定 KV</h1>
+		<p>当前站点 <strong>${转义HTML(host)}</strong> 还没有绑定 <code>KV</code>，所以后台和订阅相关配置无法完整工作。</p>
+		<p>请先在 Cloudflare 里绑定一个可用的 KV 命名空间，再重新部署。这样 <code>/admin</code> 扫码添加订阅和日志记录都会恢复正常。</p>
+		<a class="button" href="https://github.com/cmliu/edgetunnel#%EF%B8%8F-workers-%E9%83%A8%E7%BD%B2">查看部署说明</a>
+	</main>
+</body>
+</html>`;
 }
 
 function 掩码敏感信息(文本, 前缀长度 = 3, 后缀长度 = 2) {

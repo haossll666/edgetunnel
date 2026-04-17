@@ -6,23 +6,6 @@ Update it after every shipped slice.
 
 ## NOW
 
-### Q3: Extend admin fallback coverage
-
-Goal:
-Reduce operator lockout risk when external static pages are unavailable.
-
-Scope:
-
-- login/noADMIN/noKV fallback strategy
-- tests and docs tied to those routes
-
-Guardrails:
-
-- keep auth semantics stable
-- keep `/admin` QR onboarding intact
-
-## NEXT
-
 ### Q4: Improve local worker verification entrypoint
 
 Goal:
@@ -34,7 +17,12 @@ Scope:
 - worker-related tests
 - docs
 
-## LATER
+Guardrails:
+
+- keep the worker-compatible local test command documented
+- keep route-level regression coverage in place
+
+## NEXT
 
 ### Q5: Redesign config-loading split for `/sub`
 
@@ -45,6 +33,8 @@ Blocked until the contract and verification story are stronger.
 
 Status:
 Blocked behind Q5 because the previous attempt caused runtime regression.
+
+## LATER
 
 ### Q7: Broaden admin/static local fallback coverage
 
