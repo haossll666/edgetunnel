@@ -31,6 +31,27 @@ Do **not** prioritize:
 - Prefer fewer KV writes and fewer external fetches on `/sub`, WebSocket, XHTTP, and gRPC paths
 - Default to safe and conservative behavior
 
+## Subscription UX Compatibility
+
+The current operator-critical UX that must not be broken is:
+
+- after logging into `/admin`, the operator can directly scan a QR code on a phone and add the subscription
+
+Treat the following as high-risk compatibility surfaces:
+
+- `/admin/config.json`
+- `config_JSON.LINK`
+- `/sub?token=...`
+- token generation
+- UUID mapping
+- host/path/protocol fields used for node generation
+
+Rules:
+
+- Do not modify these surfaces without an explicit compatibility check
+- Prefer adding tests and documentation before touching implementation
+- If a change would require the operator to re-add subscriptions, escalate before merging
+
 ## Known Project Risks
 
 Current codebase realities future agents should account for:
@@ -117,6 +138,7 @@ Must stay sequential:
 - changes that alter `/sub` request semantics
 - changes that alter auth/session behavior
 - changes that alter the config-loading contract
+- changes that can affect admin QR-based subscription onboarding
 
 Needs contract-first coordination:
 

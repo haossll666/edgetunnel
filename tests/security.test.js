@@ -18,7 +18,13 @@ if (!fetchBodyStr.includes('if (!env.KEY) {') || !fetchBodyStr.includes('return 
     process.exit(1);
 }
 
+if (!workerCode.includes("访问路径 === 'admin/config.json'") || !workerCode.includes("config_JSON.LINK")) {
+    console.error("Zero-Trust Alert: Admin QR subscription compatibility contract is missing!");
+    process.exit(1);
+}
+
 console.log("Starting security zero-trust tests for KEY enforcement...");
+console.log("Starting compatibility checks for admin QR subscription onboarding...");
 
 let workerFetch;
 try {
@@ -72,6 +78,10 @@ async function runTest() {
         res = await workerFetch(dummyRequest, envWithKey, {});
         assert.strictEqual(res.status, 200, 'Expected status 200 when KEY is present');
         console.log("✅ Test Passed: System proceeds when KEY is present.");
+
+        assert.ok(workerCode.includes("访问路径 === 'admin/config.json'"), 'Expected admin/config.json route to remain present');
+        assert.ok(workerCode.includes("config_JSON.LINK"), 'Expected LINK field generation to remain present for admin QR flow');
+        console.log("✅ Test Passed: Admin QR subscription compatibility markers are present.");
 
     } catch (e) {
         console.error("❌ Test Failed:", e);

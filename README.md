@@ -117,7 +117,7 @@
 | 变量名 | 必填 | 示例 | 详细备注 |
 | :--- | :---: | :--- | :--- |
 | **ADMIN** | ✅ | `123456` | 后台管理面板登录密码 |
-| **KEY** | ❌ | `CMLiussss` | 快速订阅路径密钥，访问 `/CMLiussss` 即可快速获取节点 |
+| **KEY** | ✅ | `CMLiussss` | Worker 运行所需密钥，同时也是快速订阅路径密钥，访问 `/CMLiussss` 即可快速获取节点 |
 | **UUID** | ❌ | `90cd4a77-141a-43c9-991b-08263cfe9c10` | 强制固定UUID，只支持**UUIDv4**标准格式 |
 | **PROXYIP** | ❌ | `proxyip.cmliussss.net:443` | 全局自定义反代 IP  |
 | **URL** | ❌ | `https://cloudflare-error-page-3th.pages.dev` | 默认主页伪装地址（可填写网页 URL 或 `1101`） |
@@ -132,6 +132,10 @@
 如需修改 **订阅地址里的TOKEN** 和 **用于节点验证的UUID** ，可通过修改变量
 1. 修改`ADMIN`或`KEY`变量的值，可以随机修改 **订阅地址里的TOKEN** 和 **用于节点验证的UUID**
 2. 设置`UUID`变量可以强制固定 **订阅地址里的TOKEN** 和 **用于节点验证的UUID**，注意必须是**UUIDv4**标准格式，否则会导致节点无法使用。
+
+> [!IMPORTANT]
+> 当前推荐的个人使用方式依赖 `admin` 页面中的扫码添加订阅体验。
+> 如无充分验证，不要随意修改 `/admin/config.json`、`config_JSON.LINK`、`/sub?token=...`、`KEY`、`UUID` 的兼容行为，否则可能导致手机客户端需要重新添加订阅。
 
 本工具支持通过 **PATH路径** 动态切换底层代理方案：
 
