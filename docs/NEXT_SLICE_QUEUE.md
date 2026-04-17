@@ -6,24 +6,6 @@ Update it after every shipped slice.
 
 ## NOW
 
-### Q1: Tighten deployment defaults and operator guidance
-
-Goal:
-Reduce misconfiguration for personal free-tier deployments without touching subscription behavior.
-
-Scope:
-
-- `README.md`
-- `docs/**`
-
-Done when:
-
-- recommended personal-use defaults are explicit
-- log-related defaults are documented for free-tier use
-- docs remain aligned with the admin QR onboarding contract
-
-## NEXT
-
 ### Q2: Reduce non-`/sub` logging pressure
 
 Goal:
@@ -35,11 +17,13 @@ Scope:
 - targeted tests
 - docs if behavior changes
 
-Guardrails:
+Done when:
 
-- do not alter `/sub` output
-- do not remove admin/security visibility without replacement
-- do not add new dependencies
+- `/sub` output is unchanged
+- admin/security visibility remains intact
+- unnecessary KV writes are reduced outside the subscription hot path
+
+## NEXT
 
 ### Q3: Extend admin fallback coverage
 
