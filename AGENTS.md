@@ -155,6 +155,20 @@ Current locally verified commands:
 
 Use targeted verification first. Widen only when the changed behavior requires it.
 
+## Git And Rollback Discipline
+
+- Every commit must have a corresponding annotated git tag
+- Create the tag immediately after the commit and before or together with pushing
+- Tags are mandatory because rollback must be possible within seconds if a slice breaks the system
+- Prefer tags that identify both the slice and the date, for example:
+  - `p1-t2-sub-logging-20260417`
+  - `admin-fallback-20260417`
+- Handoffs must record both:
+  - commit SHA
+  - tag name
+- Do not leave important changes in remote history without a tag anchor
+- When in doubt, favor smaller commits with smaller tags over large mixed changes
+
 ## Handoff Template
 
 Use this exact structure in substantial handoffs:
@@ -165,6 +179,10 @@ Use this exact structure in substantial handoffs:
 
 ## Changed
 - [file and change summary]
+
+## Release Marker
+- Commit: [sha]
+- Tag: [tag-name]
 
 ## Verified
 - [command]

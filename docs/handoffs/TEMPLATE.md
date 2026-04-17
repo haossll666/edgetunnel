@@ -10,6 +10,11 @@
 
 - [file] - [what changed]
 
+## Release Marker
+
+- Commit:
+- Tag:
+
 ## Verified
 
 - [command] - [pass/fail]

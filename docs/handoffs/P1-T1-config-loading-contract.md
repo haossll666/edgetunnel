@@ -13,6 +13,11 @@
 - `_worker.js` - left the subscription path on the lean default path
 - `tests/worker.test.js` - added regression tests for subscription-path vs admin-path KV access behavior
 
+## Release Marker
+
+- Commit: `d78f396724f9959f8960079a8b60fd44dae24865`
+- Tag: `p1-t1-config-loading-contract-20260417`
+
 ## Verified
 
 - `node --loader ./tests/loader.mjs --test tests/worker.test.js` - pass
