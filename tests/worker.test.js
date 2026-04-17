@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 读取TG配置, 读取config_JSON } from '../_worker.js';
+import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 读取TG配置, 读取CF配置, 清理配置缓存, 读取config_JSON } from '../_worker.js';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -175,6 +175,7 @@ test('是否启用日志记录 (Log Recording Gate)', async (t) => {
 
 test('读取TG配置 cache (TG Config KV Cache)', async (t) => {
 	await t.test('should reuse tg.json from memory within the cache window', async () => {
+		清理配置缓存();
 		let getCount = 0;
 		const env = {
 			KV: {
@@ -195,6 +196,35 @@ test('读取TG配置 cache (TG Config KV Cache)', async (t) => {
 			assert.equal(getCount, 1);
 			assert.deepEqual(first, { BotToken: 'bot-token', ChatID: 'chat-id' });
 			assert.deepEqual(second, { BotToken: 'bot-token', ChatID: 'chat-id' });
+		} finally {
+			Date.now = originalNow;
+		}
+	});
+});
+
+test('读取CF配置 cache (CF Config KV Cache)', async (t) => {
+	await t.test('should reuse cf.json from memory within the cache window', async () => {
+		清理配置缓存();
+		let getCount = 0;
+		const env = {
+			KV: {
+				get: async (key) => {
+					getCount += 1;
+					assert.equal(key, 'cf.json');
+					return JSON.stringify({ Email: 'a@example.com', GlobalAPIKey: 'k', AccountID: 'a', APIToken: 't' });
+				},
+			},
+		};
+
+		const originalNow = Date.now;
+		try {
+			Date.now = () => 2_000_000;
+			const first = await 读取CF配置(env);
+			Date.now = () => 2_000_000 + 60_000;
+			const second = await 读取CF配置(env);
+			assert.equal(getCount, 1);
+			assert.deepEqual(first, { Email: 'a@example.com', GlobalAPIKey: 'k', AccountID: 'a', APIToken: 't' });
+			assert.deepEqual(second, { Email: 'a@example.com', GlobalAPIKey: 'k', AccountID: 'a', APIToken: 't' });
 		} finally {
 			Date.now = originalNow;
 		}
