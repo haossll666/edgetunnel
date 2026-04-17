@@ -2625,6 +2625,7 @@ function 生成本地Admin页HTML(host) {
 		<div class="grid">
 			<a class="card" href="/login"><strong>返回登录</strong><span>重新进入管理员登录流程。</span></a>
 			<a class="card" href="/admin/config.json"><strong>配置 JSON</strong><span>查看当前配置快照。</span></a>
+			<a class="card" href="/admin/diagnostics"><strong>诊断视图</strong><span>查看恢复入口和订阅摘要。</span></a>
 			<a class="card" href="/admin/ADD.txt"><strong>ADD.txt</strong><span>查看或刷新本地优选 IP。</span></a>
 			<a class="card" href="/admin/cf.json"><strong>Cloudflare 原始信息</strong><span>查看当前请求的 CF 上下文。</span></a>
 			<a class="card" href="/logout"><strong>退出登录</strong><span>清除会话并回到登录页。</span></a>

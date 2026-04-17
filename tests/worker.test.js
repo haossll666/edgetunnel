@@ -86,6 +86,7 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 		const body = 生成本地Admin页HTML('example.com');
 		assert.match(body, /后台可用，但外部 Pages 暂时不可达/);
 		assert.match(body, /href="\/admin\/config\.json"/);
+		assert.match(body, /href="\/admin\/diagnostics"/);
 		assert.match(body, /href="\/logout"/);
 	});
 });
