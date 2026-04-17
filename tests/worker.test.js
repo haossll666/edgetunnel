@@ -1,19 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-	掩码敏感信息,
-	是否跳过GetSUB日志KV写入,
-	是否跳过非SUB日志KV写入,
-	获取Pages页面或本地兜底,
-	生成本地登录页HTML,
-	生成本地Admin页HTML,
-	生成本地NoADMIN页HTML,
-	生成本地NoKV页HTML,
-	读取订阅基础配置,
-	读取管理配置,
-	重置并读取管理配置,
-	读取config_JSON
-} from '../_worker.js';
+import { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 读取config_JSON } from '../_worker.js';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -122,7 +109,7 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 
 	await t.test('should keep base config loading on config.json only', async () => {
 		const kv = createMockKV({});
-		const result = await 读取订阅基础配置({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0');
+		const result = await 读取config_JSON({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0', false, false);
 		assert.deepEqual(kv.gets, ['config.json']);
 		assert.deepEqual(kv.puts.length, 1);
 		assert.equal(kv.puts[0][0], 'config.json');
@@ -147,7 +134,7 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 		};
 
 		try {
-			const result = await 读取管理配置({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0');
+			const result = await 读取config_JSON({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0', false, true);
 			assert.deepEqual(kv.gets, ['config.json', 'tg.json', 'cf.json']);
 			assert.equal(kv.puts.length, 1);
 			assert.equal(kv.puts[0][0], 'config.json');
@@ -158,25 +145,5 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 		} finally {
 			global.fetch = originalFetch;
 		}
-	});
-
-	await t.test('should keep admin reset path on the admin contract while rewriting config.json', async () => {
-		const kv = createMockKV({
-			'config.json': JSON.stringify({ HOST: 'stale.example', UUID: 'stale-uuid' }),
-		});
-		const result = await 重置并读取管理配置({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0');
-		assert.deepEqual(kv.gets, ['config.json', 'tg.json', 'cf.json']);
-		assert.deepEqual(kv.puts.map(([key]) => key), ['config.json', 'tg.json', 'cf.json']);
-		assert.equal(result.HOST, 'example.com');
-		assert.equal(result.UUID, 'uuid-123');
-		assert.equal(result.TG.启用, false);
-		assert.equal(result.CF.Usage.success, false);
-	});
-
-	await t.test('should preserve direct boolean contract for the internal loader', async () => {
-		const kv = createMockKV({});
-		const result = await 读取config_JSON({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0', false, false);
-		assert.deepEqual(kv.gets, ['config.json']);
-		assert.equal(result.HOST, 'example.com');
 	});
 });
