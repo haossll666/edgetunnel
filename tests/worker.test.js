@@ -149,6 +149,56 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 		}
 	});
 
+	await t.test('should resolve Cloudflare usage credentials when admin extensions use account keys', async () => {
+		清理基础配置缓存();
+		清理配置缓存();
+		const kv = createMockKV({
+			'tg.json': JSON.stringify({ BotToken: 'bot-secret', ChatID: 'chat-id' }),
+			'cf.json': JSON.stringify({ Email: 'ops@example.com', GlobalAPIKey: 'global-key' }),
+		});
+		const originalFetch = global.fetch;
+		global.fetch = async (input, init) => {
+			const url = String(input);
+			if (url.endsWith('/accounts')) {
+				assert.equal(init.headers['X-AUTH-EMAIL'], 'ops@example.com');
+				assert.equal(init.headers['X-AUTH-KEY'], 'global-key');
+				return new Response(JSON.stringify({ result: [{ id: 'account-1', name: 'ops@example.com' }] }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' },
+				});
+			}
+			if (url.endsWith('/graphql')) {
+				assert.equal(init.headers['X-AUTH-EMAIL'], 'ops@example.com');
+				assert.equal(init.headers['X-AUTH-KEY'], 'global-key');
+				return new Response(JSON.stringify({
+					data: {
+						viewer: {
+							accounts: [{
+								pagesFunctionsInvocationsAdaptiveGroups: [{ sum: { requests: 11 } }],
+								workersInvocationsAdaptive: [{ sum: { requests: 7 } }],
+							}],
+						},
+					},
+				}), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' },
+				});
+			}
+			throw new Error(`unexpected fetch: ${url}`);
+		};
+
+		try {
+			清理基础配置缓存();
+			const result = await 读取config_JSON({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0', false, true);
+			assert.equal(result.CF.Usage.success, true);
+			assert.equal(result.CF.Usage.pages, 11);
+			assert.equal(result.CF.Usage.workers, 7);
+			assert.equal(result.CF.Usage.total, 18);
+		} finally {
+			global.fetch = originalFetch;
+		}
+	});
+
 	await t.test('should reuse base config from memory within the cache window', async () => {
 		清理基础配置缓存();
 		const configJson = {

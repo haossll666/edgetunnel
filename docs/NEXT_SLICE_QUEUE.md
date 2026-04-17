@@ -6,23 +6,24 @@ Update it after every shipped slice.
 
 ## NOW
 
-### Q8-6: Review whether any remaining optimization is worth the complexity
+### Q8-7: Keep the admin-side usage path stable
 
 Status:
 Completed.
 
 Goal:
-Decide whether there is still a worthwhile optimization slice that does not re-open subscription risk.
+Keep the admin-side Cloudflare usage path stable so the operator dashboard does not throw on repeated reads.
 
 Scope:
 
-- docs, logging, or operator-UX refinements only
-- avoid reopening `/sub` contract or admin QR onboarding risk
+- Cloudflare usage caching path
+- admin dashboard stability
+- tests for usage-account and graph query path
 
 Done when:
 
-- the repository has an explicit stop point for remaining low-risk work
-- the queue only retains work that clearly earns its complexity
+- `getCloudflareUsage()` no longer depends on an undefined cache
+- tests cover the account-key usage path
 - the onboarding contract remains intact
 
 ## NEXT

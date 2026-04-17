@@ -3557,6 +3557,7 @@ function 获取SOCKS5账号(address, 默认端口 = 80) {
 }
 
 const usageCache = new Map();
+const cfUsageCache = new Map();
 
 async function fetchCloudflareUsage(Email, GlobalAPIKey, AccountID, APIToken) {
 	const API = "https://api.cloudflare.com/client/v4";
