@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 读取config_JSON } from '../_worker.js';
+import { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 读取config_JSON } from '../_worker.js';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -80,6 +80,13 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 	await t.test('should generate route-specific fallback copy for noADMIN and noKV', () => {
 		assert.match(生成本地NoADMIN页HTML('example.com'), /还没有配置 ADMIN/);
 		assert.match(生成本地NoKV页HTML('example.com'), /还没有绑定 KV/);
+	});
+
+	await t.test('should generate a usable local admin shell when Pages is unavailable', () => {
+		const body = 生成本地Admin页HTML('example.com');
+		assert.match(body, /后台可用，但外部 Pages 暂时不可达/);
+		assert.match(body, /href="\/admin\/config\.json"/);
+		assert.match(body, /href="\/logout"/);
 	});
 });
 

@@ -27,11 +27,11 @@ test('admin QR subscription onboarding contract', () => {
 		'subscription response must continue to emit the userinfo header in the expected format'
 	);
 	assert.ok(
-		workerCode.includes('Admin page fetch failed, falling back to local page:'),
-		'admin page delivery should keep a local fallback when Pages is unavailable'
+		workerCode.includes("return await 获取Pages页面或本地兜底('/admin' + url.search, 生成本地Admin页HTML(url.host), 200);"),
+		'admin page delivery should keep a local admin shell fallback when Pages is unavailable'
 	);
 	assert.ok(
-		workerCode.includes('return new Response(await nginx()'),
-		'admin page fallback should remain local and not affect subscription contract'
+		workerCode.includes('生成本地Admin页HTML(host)'),
+		'admin page fallback should keep a local HTML shell and not affect subscription contract'
 	);
 });

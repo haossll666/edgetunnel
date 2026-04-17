@@ -10,7 +10,7 @@ const 非SUB日志最近写入缓存 = new Map();
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
-export { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 读取config_JSON };
+export { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 读取config_JSON };
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
@@ -246,12 +246,7 @@ export default {
 					}
 
 					ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Admin_Login', config_JSON));
-					try {
-						return await fetch(Pages静态页面 + '/admin' + url.search);
-					} catch (error) {
-						console.error('Admin page fetch failed, falling back to local page:', error);
-						return new Response(await nginx(), { status: 200, headers: { 'Content-Type': 'text/html; charset=UTF-8', 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate', 'Pragma': 'no-cache', 'Expires': '0' } });
-					}
+					return await 获取Pages页面或本地兜底('/admin' + url.search, 生成本地Admin页HTML(url.host), 200);
 				} else if (访问路径 === 'logout' || uuidRegex.test(访问路径)) {//清除cookie并跳转到登录页面
 					const 响应 = new Response('重定向中...', { status: 302, headers: { 'Location': '/login' } });
 					响应.headers.set('Set-Cookie', 'auth=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict; Secure');
@@ -2539,6 +2534,43 @@ function 生成本地登录页HTML(host) {
 			<button type="submit">登录</button>
 		</form>
 		<p class="meta">如果登录成功，浏览器会跳转到 <code>/admin</code>，随后可以继续扫码添加订阅。</p>
+	</main>
+</body>
+</html>`;
+}
+
+function 生成本地Admin页HTML(host) {
+	return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>edgetunnel 管理后台</title>
+	<style>
+		body { margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: radial-gradient(circle at top, #1e293b, #020617 60%); color: #e2e8f0; min-height: 100vh; display: grid; place-items: center; }
+		main { width: min(94vw, 780px); background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 24px; padding: 32px; box-shadow: 0 24px 80px rgba(15, 23, 42, 0.45); }
+		h1 { margin: 0; font-size: clamp(28px, 4vw, 42px); }
+		p { line-height: 1.7; color: #cbd5e1; }
+		.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-top: 24px; }
+		a.card { display: block; padding: 16px; border-radius: 18px; background: rgba(30, 41, 59, 0.92); border: 1px solid rgba(148, 163, 184, 0.18); color: inherit; text-decoration: none; transition: transform .15s ease, border-color .15s ease; }
+		a.card:hover { transform: translateY(-2px); border-color: rgba(56, 189, 248, 0.55); }
+		.card strong { display: block; margin-bottom: 8px; color: #f8fafc; }
+		.meta { margin-top: 18px; font-size: 13px; color: #94a3b8; }
+		code { background: rgba(15, 23, 42, 0.9); padding: 0 6px; border-radius: 6px; }
+	</style>
+</head>
+<body>
+	<main>
+		<h1>后台可用，但外部 Pages 暂时不可达</h1>
+		<p>站点 <strong>${转义HTML(host)}</strong> 的外部管理页面暂时加载失败，所以这里提供本地可用的管理入口。订阅内容和后端接口还在，先从这些入口继续排障。</p>
+		<div class="grid">
+			<a class="card" href="/login"><strong>返回登录</strong><span>重新进入管理员登录流程。</span></a>
+			<a class="card" href="/admin/config.json"><strong>配置 JSON</strong><span>查看当前配置快照。</span></a>
+			<a class="card" href="/admin/ADD.txt"><strong>ADD.txt</strong><span>查看或刷新本地优选 IP。</span></a>
+			<a class="card" href="/admin/cf.json"><strong>Cloudflare 原始信息</strong><span>查看当前请求的 CF 上下文。</span></a>
+			<a class="card" href="/logout"><strong>退出登录</strong><span>清除会话并回到登录页。</span></a>
+		</div>
+		<p class="meta">如果你只是想继续扫码添加订阅，外部 Pages 恢复后会自动回到完整后台页面；这里先保证你不会被入口挡住。</p>
 	</main>
 </body>
 </html>`;
