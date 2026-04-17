@@ -6,25 +6,6 @@ Update it after every shipped slice.
 
 ## NOW
 
-### Q2: Reduce non-`/sub` logging pressure
-
-Goal:
-Keep security-relevant and admin-relevant visibility while avoiding unnecessary KV churn outside the subscription hot path.
-
-Scope:
-
-- `_worker.js`
-- targeted tests
-- docs if behavior changes
-
-Done when:
-
-- `/sub` output is unchanged
-- admin/security visibility remains intact
-- unnecessary KV writes are reduced outside the subscription hot path
-
-## NEXT
-
 ### Q3: Extend admin fallback coverage
 
 Goal:
@@ -39,6 +20,8 @@ Guardrails:
 
 - keep auth semantics stable
 - keep `/admin` QR onboarding intact
+
+## NEXT
 
 ### Q4: Improve local worker verification entrypoint
 

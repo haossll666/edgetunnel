@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息 } from '../_worker.js';
+import { 掩码敏感信息, 是否跳过非SUB日志KV写入 } from '../_worker.js';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -29,4 +29,18 @@ test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 		assert.equal(掩码敏感信息(obj), obj, 'Object input');
 	});
 
+});
+
+test('是否跳过非SUB日志KV写入 (Skip Non-Sub Log KV Writes)', async (t) => {
+	await t.test('should keep Get_SUB logs on the KV path', () => {
+		assert.equal(是否跳过非SUB日志KV写入({ TYPE: 'Get_SUB', IP: '1.2.3.4', URL: 'https://example.com/sub', UA: 'ua', TIME: Date.now() }), false);
+	});
+
+	await t.test('should skip repeated non-Get_SUB logs within the cache window', () => {
+		const now = Date.now();
+		const 日志内容 = { TYPE: 'Admin_Login', IP: '1.2.3.4', URL: 'https://example.com/admin', UA: 'ua', TIME: now };
+		assert.equal(是否跳过非SUB日志KV写入(日志内容), false, 'first write should pass through');
+		assert.equal(是否跳过非SUB日志KV写入({ ...日志内容, TIME: now + 60_000 }), true, 'repeat within 30 minutes should skip');
+		assert.equal(是否跳过非SUB日志KV写入({ ...日志内容, TIME: now + 31 * 60_000 }), false, 'repeat after window should write again');
+	});
 });
