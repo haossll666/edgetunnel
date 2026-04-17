@@ -7,6 +7,27 @@ let config_JSON, 反代IP = '', 启用SOCKS5反代 = null, 启用SOCKS5全局反
 let 缓存反代IP, 缓存反代解析数组, 缓存反代数组索引 = 0, 启用反代兜底 = true, 调试日志打印 = false;
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
+
+const globalDecoderCache = new Map();
+function getCachedDecoder(encoding = 'utf-8') {
+	let decoder = globalDecoderCache.get(encoding);
+	if (!decoder) {
+		decoder = new TextDecoder(encoding);
+		globalDecoderCache.set(encoding, decoder);
+	}
+	return decoder;
+}
+
+const globalEncoderCache = new Map();
+function getCachedEncoder(encoding = 'utf-8') {
+	let encoder = globalEncoderCache.get(encoding);
+	if (!encoder) {
+		encoder = new TextEncoder(encoding);
+		globalEncoderCache.set(encoding, encoder);
+	}
+	return encoder;
+}
+
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
 export default {
 	async fetch(request, env, ctx) {
@@ -548,9 +569,9 @@ function 有效数据长度(data) {
 }
 
 async function 读取XHTTP首包(reader, token) {
-	const decoder = new TextDecoder();
+	const decoder = getCachedDecoder();
 	const 密码哈希 = sha224(token);
-	const 密码哈希字节 = new TextEncoder().encode(密码哈希);
+	const 密码哈希字节 = getCachedEncoder().encode(密码哈希);
 
 	const 尝试解析VLESS首包 = (data) => {
 		const length = data.byteLength;
@@ -1338,7 +1359,7 @@ function 解析木马请求(buffer, passwordPlainText) {
 	if (buffer.byteLength < 56) return { hasError: true, message: "invalid data" };
 	let crLfIndex = 56;
 	if (new Uint8Array(buffer.slice(56, 57))[0] !== 0x0d || new Uint8Array(buffer.slice(57, 58))[0] !== 0x0a) return { hasError: true, message: "invalid header format" };
-	const password = new TextDecoder().decode(buffer.slice(0, crLfIndex));
+	const password = getCachedDecoder().decode(buffer.slice(0, crLfIndex));
 	if (password !== sha224Password) return { hasError: true, message: "invalid password" };
 
 	const socks5DataBuffer = buffer.slice(crLfIndex + 2);
@@ -1360,7 +1381,7 @@ function 解析木马请求(buffer, passwordPlainText) {
 		case 3: // Domain
 			addressLength = new Uint8Array(socks5DataBuffer.slice(addressIndex, addressIndex + 1))[0];
 			addressIndex += 1;
-			address = new TextDecoder().decode(socks5DataBuffer.slice(addressIndex, addressIndex + addressLength));
+			address = getCachedDecoder().decode(socks5DataBuffer.slice(addressIndex, addressIndex + addressLength));
 			break;
 		case 4: // IPv6
 			addressLength = 16;
@@ -1412,7 +1433,7 @@ function 解析魏烈思请求(chunk, token) {
 		case 2:
 			addrLen = new Uint8Array(chunk.slice(addrValIdx, addrValIdx + 1))[0];
 			addrValIdx += 1;
-			hostname = new TextDecoder().decode(chunk.slice(addrValIdx, addrValIdx + addrLen));
+			hostname = getCachedDecoder().decode(chunk.slice(addrValIdx, addrValIdx + addrLen));
 			break;
 		case 3:
 			addrLen = 16;
@@ -1434,8 +1455,8 @@ const SS支持加密配置 = {
 };
 
 const SSAEAD标签长度 = 16, SSNonce长度 = 12;
-const SS子密钥信息 = new TextEncoder().encode('ss-subkey');
-const SS文本编码器 = new TextEncoder(), SS文本解码器 = new TextDecoder(), SS主密钥缓存 = new Map();
+const SS子密钥信息 = getCachedEncoder().encode('ss-subkey');
+const SS文本编码器 = getCachedEncoder(), SS文本解码器 = getCachedDecoder(), SS主密钥缓存 = new Map();
 
 function SS数据转Uint8Array(data) {
 	if (data instanceof Uint8Array) return data;
@@ -1792,14 +1813,14 @@ async function socks5Connect(targetHost, targetPort, initialData) {
 		const selectedMethod = new Uint8Array(response.value)[1];
 		if (selectedMethod === 0x02) {
 			if (!username || !password) throw new Error('S5 requires authentication');
-			const userBytes = new TextEncoder().encode(username), passBytes = new TextEncoder().encode(password);
+			const userBytes = getCachedEncoder().encode(username), passBytes = getCachedEncoder().encode(password);
 			const authPacket = new Uint8Array([0x01, userBytes.length, ...userBytes, passBytes.length, ...passBytes]);
 			await writer.write(authPacket);
 			response = await reader.read();
 			if (response.done || new Uint8Array(response.value)[1] !== 0x00) throw new Error('S5 authentication failed');
 		} else if (selectedMethod !== 0x00) throw new Error(`S5 unsupported auth method: ${selectedMethod}`);
 
-		const hostBytes = new TextEncoder().encode(targetHost);
+		const hostBytes = getCachedEncoder().encode(targetHost);
 		const connectPacket = new Uint8Array([0x05, 0x01, 0x00, 0x03, hostBytes.length, ...hostBytes, targetPort >> 8, targetPort & 0xff]);
 		await writer.write(connectPacket);
 		response = await reader.read();
@@ -1822,8 +1843,8 @@ async function httpConnect(targetHost, targetPort, initialData, HTTPS代理 = fa
 		? connect({ hostname, port }, { secureTransport: 'on', allowHalfOpen: false })
 		: connect({ hostname, port });
 	const writer = socket.writable.getWriter(), reader = socket.readable.getReader();
-	const encoder = new TextEncoder();
-	const decoder = new TextDecoder();
+	const encoder = getCachedEncoder();
+	const decoder = getCachedDecoder();
 	try {
 		if (HTTPS代理) await socket.opened;
 
@@ -2383,7 +2404,7 @@ function 掩码敏感信息(文本, 前缀长度 = 3, 后缀长度 = 2) {
 }
 
 async function MD5MD5(文本) {
-	const 编码器 = new TextEncoder();
+	const 编码器 = getCachedEncoder();
 
 	const 第一次哈希 = await crypto.subtle.digest('MD5', 编码器.encode(文本));
 	const 第一次哈希数组 = Array.from(new Uint8Array(第一次哈希));
@@ -2436,7 +2457,7 @@ async function DoH查询(域名, 记录类型, DoH解析服务 = "https://cloudf
 			const parts = name.endsWith('.') ? name.slice(0, -1).split('.') : name.split('.');
 			const bufs = [];
 			for (const label of parts) {
-				const enc = new TextEncoder().encode(label);
+				const enc = getCachedEncoder().encode(label);
 				bufs.push(new Uint8Array([enc.length]), enc);
 			}
 			bufs.push(new Uint8Array([0]));
@@ -2493,7 +2514,7 @@ async function DoH查询(域名, 记录类型, DoH解析服务 = "https://cloudf
 					jumped = true;
 					continue;
 				}
-				labels.push(new TextDecoder().decode(buf.slice(p + 1, p + 1 + len)));
+				labels.push(getCachedDecoder().decode(buf.slice(p + 1, p + 1 + len)));
 				p += len + 1;
 			}
 			if (endPos === -1) endPos = p + 1;
@@ -2534,7 +2555,7 @@ async function DoH查询(域名, 记录类型, DoH解析服务 = "https://cloudf
 				const parts = [];
 				while (tOff < rdlen) {
 					const tLen = rdata[tOff++];
-					parts.push(new TextDecoder().decode(rdata.slice(tOff, tOff + tLen)));
+					parts.push(getCachedDecoder().decode(rdata.slice(tOff, tOff + tLen)));
 					tOff += tLen;
 				}
 				data = parts.join('');
@@ -2954,7 +2975,7 @@ async function 请求优选API(urls, 默认端口 = '443', 超时时间 = 3000) 
 				let decodeSuccess = false;
 				for (const decoder of decoders) {
 					try {
-						const decoded = new TextDecoder(decoder).decode(buffer);
+						const decoded = getCachedDecoder(decoder).decode(buffer);
 						// 验证解码结果的有效性
 						if (decoded && decoded.length > 0 && !decoded.includes('\ufffd')) {
 							text = decoded;
@@ -2997,7 +3018,7 @@ async function 请求优选API(urls, 默认端口 = '443', 超时时间 = 3000) 
 			if (cleanText.length > 0 && cleanText.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(cleanText)) {
 				try {
 					const bytes = new Uint8Array(atob(cleanText).split('').map(c => c.charCodeAt(0)));
-					预处理订阅明文内容 = new TextDecoder('utf-8').decode(bytes);
+					预处理订阅明文内容 = getCachedDecoder('utf-8').decode(bytes);
 				} catch { }
 			}
 			if (预处理订阅明文内容.split('#')[0].includes('://')) {
@@ -3403,7 +3424,7 @@ async function SOCKS5可用性验证(代理协议 = 'socks5', 代理参数) {
 				: await httpConnect('check.socks5.090227.xyz', 80, initialData));
 		if (!tcpSocket) return { success: false, error: '无法连接到代理服务器', proxy: 代理协议 + "://" + 完整代理参数, responseTime: Date.now() - startTime };
 		try {
-			const writer = tcpSocket.writable.getWriter(), encoder = new TextEncoder();
+			const writer = tcpSocket.writable.getWriter(), encoder = getCachedEncoder();
 			await writer.write(encoder.encode(`GET /cdn-cgi/trace HTTP/1.1\r\nHost: check.socks5.090227.xyz\r\nConnection: close\r\n\r\n`));
 			writer.releaseLock();
 			const reader = tcpSocket.readable.getReader(), decoder = new TextDecoder();
