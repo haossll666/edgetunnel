@@ -6,8 +6,8 @@ Q5 compatibility fix: restore `/sub` behavior for older or minimal KV configs so
 - `tests/worker.test.js`: added a regression test proving an older config without `反代` still loads and `/sub` data remains available.
 
 ## Release Marker
-- Commit: pending
-- Tag: pending
+- Commit: b0dc72cb4eb522d6142194a4433b5de1f34e606b
+- Tag: q5-sub-compat-fix-20260417
 
 ## Verified
 - `node --loader ./tests/loader.mjs --test tests/worker.test.js`
