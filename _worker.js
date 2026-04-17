@@ -32,7 +32,7 @@ export default {
 			反代IP = proxyIPs[Math.floor(Math.random() * proxyIPs.length)];
 			启用反代兜底 = false;
 		} else 反代IP = (request.cf.colo + '.PrOxYIp.CmLiUsSsS.nEt').toLowerCase();
-		const 访问IP = request.headers.get('X-Real-IP') || request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || request.headers.get('True-Client-IP') || request.headers.get('Fly-Client-IP') || request.headers.get('X-Appengine-Remote-Addr') || request.headers.get('X-Forwarded-For') || request.headers.get('X-Real-IP') || request.headers.get('X-Cluster-Client-IP') || request.cf?.clientTcpRtt || '未知IP';
+		const 访问IP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Real-IP') || request.headers.get('X-Forwarded-For') || request.headers.get('True-Client-IP') || request.headers.get('Fly-Client-IP') || request.headers.get('X-Appengine-Remote-Addr') || request.headers.get('X-Cluster-Client-IP') || request.cf?.clientTcpRtt || '未知IP';
 		if (env.GO2SOCKS5) SOCKS5白名单 = await 整理成数组(env.GO2SOCKS5);
 		if (访问路径 === 'version' && url.searchParams.get('uuid') === userID) {// 版本信息接口
 			return new Response(JSON.stringify({ Version: Number(String(Version).replace(/\D+/g, '')) }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
@@ -64,14 +64,37 @@ export default {
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
 					if (authCookie == await safeHash(UA + 加密秘钥 + 管理员密码)) return new Response('重定向中...', { status: 302, headers: { 'Location': '/admin' } });
 					if (request.method === 'POST') {
+						const 访问IP限制键 = `login_attempts_${访问IP}`;
+						let 尝试次数 = 0;
+						if (env.KV && typeof env.KV.get === 'function') {
+							const 记录 = await env.KV.get(访问IP限制键);
+							if (记录) {
+								const 解析记录 = JSON.parse(记录);
+								if (解析记录.锁定且直到 > Date.now()) {
+									return new Response(JSON.stringify({ error: `尝试次数过多，请在 ${Math.ceil((解析记录.锁定且直到 - Date.now()) / 1000)} 秒后重试` }), { status: 429, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
+								}
+								尝试次数 = 解析记录.次数 || 0;
+							}
+						}
+
 						const formData = await request.text();
 						const params = new URLSearchParams(formData);
 						const 输入密码 = params.get('password');
+
 						if (输入密码 === 管理员密码) {
-							// 密码正确，设置cookie并返回成功标记
+							// 密码正确，清零错误次数，设置cookie并返回成功标记
+							if (env.KV && typeof env.KV.put === 'function') await env.KV.delete(访问IP限制键);
 							const 响应 = new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-							响应.headers.set('Set-Cookie', `auth=${await safeHash(UA + 加密秘钥 + 管理员密码)}; Path=/; Max-Age=86400; HttpOnly`);
+							响应.headers.set('Set-Cookie', `auth=${await safeHash(UA + 加密秘钥 + 管理员密码)}; Path=/; Max-Age=86400; HttpOnly; SameSite=Strict; Secure`);
 							return 响应;
+						} else {
+							// 密码错误，记录次数
+							if (env.KV && typeof env.KV.put === 'function') {
+								尝试次数++;
+								const 新记录 = { 次数: 尝试次数, 锁定且直到: 尝试次数 >= 5 ? Date.now() + 300000 : 0 };
+								await env.KV.put(访问IP限制键, JSON.stringify(新记录), { expirationTtl: 300 });
+							}
+							return new Response(JSON.stringify({ error: '密码错误' }), { status: 401, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 						}
 					}
 					return fetch(Pages静态页面 + '/login');
@@ -135,9 +158,19 @@ export default {
 					} else if (request.method === 'POST') {// 处理 KV 操作（POST 请求）
 						if (访问路径 === 'admin/config.json') { // 保存config.json配置
 							try {
+								// 限制请求体大小，最大 65536 字节
+								const cloneReq = request.clone();
+								const rawBody = await cloneReq.arrayBuffer();
+								if (rawBody.byteLength > 65536) return new Response(JSON.stringify({ error: 'Payload Too Large' }), { status: 413, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
+
 								const newConfig = await request.json();
 								// 验证配置完整性
 								if (!newConfig.UUID || !newConfig.HOST) return new Response(JSON.stringify({ error: '配置不完整' }), { status: 400, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
+								
+								// 验证UUID格式及HOST长度合法性
+								const uuidRegexLocal = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+								if (!uuidRegexLocal.test(newConfig.UUID)) return new Response(JSON.stringify({ error: '无效的 UUID 格式' }), { status: 400, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
+								if (typeof newConfig.HOST !== 'string' || newConfig.HOST.length > 1024) return new Response(JSON.stringify({ error: '无效的 HOST' }), { status: 400, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 
 								// 保存到 KV
 								await env.KV.put('config.json', JSON.stringify(newConfig, null, 2));
@@ -214,7 +247,7 @@ export default {
 					return fetch(Pages静态页面 + '/admin' + url.search);
 				} else if (访问路径 === 'logout' || uuidRegex.test(访问路径)) {//清除cookie并跳转到登录页面
 					const 响应 = new Response('重定向中...', { status: 302, headers: { 'Location': '/login' } });
-					响应.headers.set('Set-Cookie', 'auth=; Path=/; Max-Age=0; HttpOnly');
+					响应.headers.set('Set-Cookie', 'auth=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict; Secure');
 					return 响应;
 				} else if (访问路径 === 'sub') {//处理订阅请求
 					const 订阅TOKEN = await safeHash(host + userID), 作为优选订阅生成器 = ['1', 'true'].includes(env.BEST_SUB) && url.searchParams.get('host') === 'example.com' && url.searchParams.get('uuid') === '00000000-0000-4000-8000-000000000000' && UA.toLowerCase().includes('tunnel (https://github.com/cmliu/edge');
