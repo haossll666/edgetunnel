@@ -2434,11 +2434,11 @@ function 批量替换域名(内容, hosts, 每组数量 = 2) {
 	let currentRandomHost = null;
 	return 内容.replace(/example\.com/g, () => {
 		if (count % 每组数量 === 0) {
-			const 原始host = 打乱后HOSTS[((count / 每组数量) | 0) % 打乱后HOSTS.length];
+			const 原始host = 打乱后HOSTS[(count / 每组数量 | 0) % 打乱后HOSTS.length];
 			currentRandomHost = 原始host?.includes('*') ? 原始host.replace(/\*/g, () => {
 				let s = '';
-				const len = ((Math.random() * 14) + 3) | 0;
-				for (let i = 0; i < len; i++) s += 字符集[(Math.random() * 36) | 0];
+				let len = Math.random() * 14 + 3 | 0;
+				for (let i = 0; i < len; i++) s += 字符集[Math.random() * 36 | 0];
 				return s;
 			}) : 原始host;
 		}
