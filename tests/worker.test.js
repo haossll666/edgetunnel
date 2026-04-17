@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 读取config_JSON } from '../_worker.js';
+import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON } from '../_worker.js';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -377,4 +377,20 @@ test('清理配置缓存 (Config Cache Reset)', async (t) => {
 		assert.equal(tgGets, 2);
 		assert.equal(cfGets, 2);
 	});
+});
+
+test('清理Cloudflare使用量缓存 (Cloudflare Usage Cache Reset)', async () => {
+	清理Cloudflare使用量缓存();
+	// 先占位写入，确保清理会同时移除两个缓存层。
+	const usageCache = globalThis.__edgetunnelUsageCacheForTest;
+	if (usageCache && typeof usageCache.set === 'function') {
+		usageCache.set('x', { promise: Promise.resolve({ success: true }), expiresAt: Date.now() + 1000 });
+	}
+	const cfUsageCache = globalThis.__edgetunnelCfUsageCacheForTest;
+	if (cfUsageCache && typeof cfUsageCache.set === 'function') {
+		cfUsageCache.set('x', { promise: Promise.resolve({ success: true }), timestamp: Date.now(), data: { success: true } });
+	}
+	清理Cloudflare使用量缓存();
+	assert.equal(usageCache ? usageCache.size : 0, 0);
+	assert.equal(cfUsageCache ? cfUsageCache.size : 0, 0);
 });

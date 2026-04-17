@@ -6,29 +6,29 @@ Update it after every shipped slice.
 
 ## NOW
 
-### Q8-7: Keep the admin-side usage path stable
+### Q8-8: Keep Cloudflare usage cache coherent on admin saves
 
 Status:
-Completed.
+In progress.
 
 Goal:
-Keep the admin-side Cloudflare usage path stable so the operator dashboard does not throw on repeated reads.
+Keep the Cloudflare usage cache coherent when the operator updates `cf.json`, so the admin dashboard does not keep stale usage state.
 
 Scope:
 
-- Cloudflare usage caching path
-- admin dashboard stability
-- tests for usage-account and graph query path
+- `cf.json` save path
+- Cloudflare usage cache invalidation
+- tests for cache reset behavior
 
 Done when:
 
-- `getCloudflareUsage()` no longer depends on an undefined cache
-- tests cover the account-key usage path
-- the onboarding contract remains intact
+- saving `cf.json` clears Cloudflare usage cache
+- tests cover the cache reset behavior
+- subscription onboarding remains unchanged
 
 ## NEXT
 
-### No further low-risk optimization slices
+### Hold the line after cache invalidation
 
 Status:
 Planned.

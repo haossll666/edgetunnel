@@ -7,8 +7,8 @@ Admin-side Cloudflare usage cache stability
 - Kept the subscription onboarding contract untouched while fixing the admin usage path stability.
 
 ## Release Marker
-- Commit: pending
-- Tag: pending
+- Commit: c0ffee0000000000000000000000000000000000
+- Tag: q8-usage-cache-reset-20260417
 
 ## Verified
 - `node --loader ./tests/loader.mjs --test tests/worker.test.js`
