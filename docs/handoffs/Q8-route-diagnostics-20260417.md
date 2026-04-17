@@ -1,11 +1,11 @@
 ## Slice
-Follow-up logging refinements
+Route diagnostics runtime helper
 
 ## Changed
-- Added `是否启用日志记录()` in `_worker.js` so OFF_LOG now short-circuits the `/sub` logging path before `tg.json` is read.
-- Added a test to make sure OFF_LOG disables logging at the gate level.
-- Kept the `/sub` output and onboarding contract intact while removing a repeat hot-path log branch.
-- Updated `docs/NEXT_SLICE_QUEUE.md` to mark the follow-up logging slice complete and queue the next diagnostics decision.
+- Added `/admin/diagnostics` as a read-only admin-only JSON helper that summarizes recovery entrypoints without exposing secrets.
+- Added `生成管理诊断视图()` and a focused test to lock the helper structure.
+- Kept the `/sub` output and onboarding contract intact while giving the operator a faster recovery path.
+- Updated `docs/NEXT_SLICE_QUEUE.md` to mark the runtime diagnostics slice complete and queue the final optimization review.
 
 ## Release Marker
 - Commit: pending
@@ -18,8 +18,8 @@ Follow-up logging refinements
 - All passed.
 
 ## Risks / Open Questions
-- The next slice should stay inside operator guidance or logging refinements unless a concrete runtime benefit is clear.
-- We still should avoid changing `/sub` output or onboarding semantics without a fresh contract check.
+- The new helper is admin-only and read-only, but we should still keep an eye on whether it is actually used.
+- The next slice should stay outside `/sub` unless a fresh contract review is performed.
 
 ## Next Slice
-- Decide whether route diagnostics need any runtime helper at all, or should remain docs-only.
+- Review whether any remaining optimization is worth the complexity before touching runtime again.

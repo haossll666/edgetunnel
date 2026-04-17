@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 读取TG配置, 读取config_JSON } from '../_worker.js';
+import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 读取TG配置, 读取config_JSON } from '../_worker.js';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -197,5 +197,22 @@ test('读取TG配置 cache (TG Config KV Cache)', async (t) => {
 		} finally {
 			Date.now = originalNow;
 		}
+	});
+});
+
+test('生成管理诊断视图 (Admin Diagnostics View)', async (t) => {
+	await t.test('should expose recovery routes without secrets', () => {
+		const view = 生成管理诊断视图(new URL('https://example.com/admin/diagnostics'), {
+			LINK: 'vless://stable-entry',
+			优选订阅生成: { SUBUpdateTime: 3 },
+		}, { OFF_LOG: '1' });
+
+		assert.equal(view.route, '/admin/diagnostics');
+		assert.equal(view.host, 'example.com');
+		assert.equal(view.subscription.stableFirstEntry, true);
+		assert.equal(view.subscription.updateHours, 3);
+		assert.equal(view.logging.offLog, true);
+		assert.ok(Array.isArray(view.recovery));
+		assert.equal(view.recovery[0], '先确认 /admin 可打开');
 	});
 });

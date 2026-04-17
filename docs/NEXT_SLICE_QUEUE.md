@@ -6,37 +6,37 @@ Update it after every shipped slice.
 
 ## NOW
 
-### Q8-4: Follow-up logging refinements
+### Q8-5: Evaluate whether route diagnostics need runtime helpers
 
 Status:
 Completed.
 
 Goal:
-Keep the hot path small by gating unnecessary log work as early as possible.
+Provide an admin-only read-only diagnostics view so recovery does not depend on memory.
 
 Scope:
 
-- log-recording gate
-- early OFF_LOG short-circuit
-- tests for the logging gate
+- admin diagnostics route
+- route and recovery notes
+- tests for the diagnostics view
 
 Done when:
 
-- OFF_LOG disables both repeated KV logging and Telegram notification work
-- tests cover the logging gate
+- `/admin/diagnostics` returns a safe read-only summary
+- tests cover the diagnostics view structure
 - the onboarding contract remains intact
 
 ## NEXT
 
-### Q8-5: Evaluate whether route diagnostics need runtime helpers
+### Q8-6: Review whether any remaining optimization is worth the complexity
 
 Status:
 Planned.
 
 Goal:
-Decide whether route diagnostics should remain docs-only or justify a tiny runtime helper.
+Decide whether there is still a worthwhile optimization slice that does not re-open subscription risk.
 
 Scope:
 
-- docs-only diagnostics refinement
-- tiny runtime helper only if there is a measurable recovery benefit
+- docs, logging, or operator-UX refinements only
+- avoid reopening `/sub` contract or admin QR onboarding risk
