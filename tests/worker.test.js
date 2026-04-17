@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 读取config_JSON } from '../_worker.js';
+import { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 读取TG配置, 读取config_JSON } from '../_worker.js';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -157,5 +157,33 @@ test('生成订阅稳定首项 (Stable Subscription First Entry)', async (t) => 
 	await t.test('should return empty string when LINK is missing', () => {
 		assert.equal(生成订阅稳定首项({}), '');
 		assert.equal(生成订阅稳定首项({ LINK: '   ' }), '');
+	});
+});
+
+test('读取TG配置 cache (TG Config KV Cache)', async (t) => {
+	await t.test('should reuse tg.json from memory within the cache window', async () => {
+		let getCount = 0;
+		const env = {
+			KV: {
+				get: async (key) => {
+					getCount += 1;
+					assert.equal(key, 'tg.json');
+					return JSON.stringify({ BotToken: 'bot-token', ChatID: 'chat-id' });
+				},
+			},
+		};
+
+		const originalNow = Date.now;
+		try {
+			Date.now = () => 1_000_000;
+			const first = await 读取TG配置(env);
+			Date.now = () => 1_000_000 + 60_000;
+			const second = await 读取TG配置(env);
+			assert.equal(getCount, 1);
+			assert.deepEqual(first, { BotToken: 'bot-token', ChatID: 'chat-id' });
+			assert.deepEqual(second, { BotToken: 'bot-token', ChatID: 'chat-id' });
+		} finally {
+			Date.now = originalNow;
+		}
 	});
 });

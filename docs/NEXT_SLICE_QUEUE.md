@@ -6,38 +6,38 @@ Update it after every shipped slice.
 
 ## NOW
 
-### Q8-1: Stable-default node and route strategy
+### Q8-2: Hot-path observability and KV pressure review
 
 Status:
 Completed.
 
 Goal:
-Keep the stable main entry first in mixed subscriptions so first-connect behavior is less likely to start on a brittle IP node.
+Reduce hot-path KV reads and keep operator-facing logging useful without paying unnecessary repetition cost.
 
 Scope:
 
-- stable subscription first entry ordering
-- tests for the stable first-entry helper
-- keep the onboarding contract unchanged
+- `/sub` logging pressure
+- Telegram config read caching
+- route-level diagnostics and recovery notes
 
 Done when:
 
-- stable LINK is prepended before other mixed subscription entries
-- tests guard the stable first-entry helper
-- existing admin QR onboarding and `/sub` semantics remain intact
+- repeated `tg.json` reads are cached in memory
+- tests cover the cache boundary
+- the onboarding contract remains intact
 
 ## NEXT
 
-### Q8-2: Hot-path observability and KV pressure review
+### Q8-3: Route diagnostics and recovery notes
 
 Status:
 Planned.
 
 Goal:
-Inspect which logs or KV reads can be reduced further on hot paths once the stable-default strategy is in place.
+Decide whether the next gain should come from lighter `/sub` diagnostics or from operator-facing recovery guidance.
 
 Scope:
 
-- `/sub` logging pressure
 - route-level diagnostics
 - operator recovery notes
+- potential follow-up logging refinements

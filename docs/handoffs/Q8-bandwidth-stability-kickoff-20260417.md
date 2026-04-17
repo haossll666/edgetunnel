@@ -1,11 +1,11 @@
 ## Slice
-Stable-default node and route strategy
+Hot-path observability and KV pressure review
 
 ## Changed
-- Added `生成订阅稳定首项()` in `_worker.js` so mixed subscriptions now prepend the stable `config_JSON.LINK` entry.
-- Kept the `/sub` subscription contract intact while making first-connect behavior less likely to start on a brittle IP node.
-- Added a focused test in `tests/worker.test.js` to lock the stable-first-entry contract.
-- Updated `docs/NEXT_SLICE_QUEUE.md` to mark the stable-default slice complete and queue the next hot-path observability review.
+- Added `读取TG配置()` in `_worker.js` so repeated `/sub` Telegram notification config reads are cached in memory for five minutes.
+- Kept the `/sub` output contract intact while removing one repeat KV read from the hot path.
+- Added a focused test in `tests/worker.test.js` to verify the TG config cache boundary.
+- Updated `docs/NEXT_SLICE_QUEUE.md` to mark the hot-path observability slice complete and queue route diagnostics next.
 
 ## Release Marker
 - Commit: pending
@@ -19,7 +19,7 @@ Stable-default node and route strategy
 
 ## Risks / Open Questions
 - The next slice should stay on the hot-path cost side and avoid re-opening the `/sub` contract.
-- We should decide whether the next optimization is logging pressure or route diagnostics first.
+- We should decide whether route diagnostics should be pure docs or include a tiny runtime helper.
 
 ## Next Slice
-- Review `/sub` logging and KV pressure with the new stable-first ordering already in place.
+- Review route diagnostics and recovery notes with the new TG KV cache already in place.
