@@ -7,8 +7,8 @@ Q5 contract-first sub-slice: replace inline boolean config-loading calls with ex
 - `docs/NEXT_SLICE_QUEUE.md`: recorded this shipped slice and paused the next Q5 step at the next `/sub` contract boundary.
 
 ## Release Marker
-- Commit: pending
-- Tag: pending
+- Commit: 1c54aa1619f7808e7aa9bcae26369576375a9e2e
+- Tag: q5-config-entrypoints-20260417
 
 ## Verified
 - `node --loader ./tests/loader.mjs --test tests/worker.test.js`
