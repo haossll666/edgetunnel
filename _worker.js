@@ -19,10 +19,10 @@ export default {
 		}
 		const 管理员密码 = env.ADMIN || env.admin || env.PASSWORD || env.password || env.pswd || env.TOKEN || env.KEY || env.UUID || env.uuid;
 		const 加密秘钥 = env.KEY;
-		const userIDHash = await safeHash(管理员密码 + 加密秘钥);
+		const userIDMD5 = await MD5MD5(管理员密码 + 加密秘钥);
 		const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 		const envUUID = env.UUID || env.uuid;
-		const userID = (envUUID && uuidRegex.test(envUUID)) ? envUUID.toLowerCase() : [userIDHash.slice(0, 8), userIDHash.slice(8, 12), '4' + userIDHash.slice(13, 16), '8' + userIDHash.slice(17, 20), userIDHash.slice(20, 32)].join('-');
+		const userID = (envUUID && uuidRegex.test(envUUID)) ? envUUID.toLowerCase() : [userIDMD5.slice(0, 8), userIDMD5.slice(8, 12), '4' + userIDMD5.slice(13, 16), '8' + userIDMD5.slice(17, 20), userIDMD5.slice(20)].join('-');
 		const hosts = env.HOST ? (await 整理成数组(env.HOST)).map(h => { const m = h.match(/^(?:https?:\/\/)?([^/:]+)/i); return (m ? m[1] : h).toLowerCase(); }) : [url.hostname];
 		const host = hosts[0];
 		const 访问路径 = url.pathname.slice(1).toLowerCase();
@@ -3388,15 +3388,16 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 		const 反代IP数组 = await 整理成数组(proxyIP);
 		let 所有反代数组 = [];
 
-		// 将数组分块，避免并发请求过多导致Cloudflare Worker达到子请求限制 (最大50个)
-		const chunkSize = 5;
-		for (let i = 0; i < 反代IP数组.length; i += chunkSize) {
-			const chunk = 反代IP数组.slice(i, i + chunkSize);
+		// 每次处理的最大并发数，防止超出 Cloudflare Worker 的 50 个 subrequest 限制
+		const BATCH_SIZE = 5;
 
-			const chunkResults = await Promise.all(chunk.map(async (singleProxyIP) => {
-				const resultGroup = [];
-				if (singleProxyIP.includes('.william')) {
-					try {
+		for (let i = 0; i < 反代IP数组.length; i += BATCH_SIZE) {
+			const batch = 反代IP数组.slice(i, i + BATCH_SIZE);
+
+			const batchPromises = batch.map(async (singleProxyIP) => {
+				let localResults = [];
+				try {
+					if (singleProxyIP.includes('.william')) {
 						let txtRecords = await DoH查询(singleProxyIP, 'TXT');
 						let txtData = txtRecords.filter(r => r.type === 16).map(r => /** @type {string} */(r.data));
 						if (txtData.length === 0) {
@@ -3408,60 +3409,61 @@ async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com',
 							let data = txtData[0];
 							if (data.startsWith('"') && data.endsWith('"')) data = data.slice(1, -1);
 							const prefixes = data.replace(/\\010/g, ',').replace(/\n/g, ',').split(',').map(s => s.trim()).filter(Boolean);
-							resultGroup.push(...prefixes.map(prefix => 解析地址端口字符串(prefix)));
-						}
-					} catch (error) {
-						console.error('解析William域名失败:', error);
-					}
-				} else {
-					let [地址, 端口] = 解析地址端口字符串(singleProxyIP);
-
-					if (singleProxyIP.includes('.tp')) {
-						const tpMatch = singleProxyIP.match(/\.tp(\d+)/);
-						if (tpMatch) 端口 = parseInt(tpMatch[1], 10);
-					}
-
-					// 判断是否是域名（非IP地址）
-					const ipv4Regex = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/;
-					const ipv6Regex = /^\[?([a-fA-F0-9:]+)\]?$/;
-
-					if (!ipv4Regex.test(地址) && !ipv6Regex.test(地址)) {
-						// 并行查询 A 和 AAAA 记录
-						let [aRecords, aaaaRecords] = await Promise.all([
-							DoH查询(地址, 'A'),
-							DoH查询(地址, 'AAAA')
-						]);
-
-						let ipv4List = aRecords.filter(r => r.type === 1).map(r => r.data);
-						let ipv6List = aaaaRecords.filter(r => r.type === 28).map(r => `[${r.data}]`);
-						let ipAddresses = [...ipv4List, ...ipv6List];
-
-						// 默认DoH无结果时，切换Google DoH重试
-						if (ipAddresses.length === 0) {
-							log(`[反代解析] 默认DoH未获取到解析结果，切换Google DoH重试 ${地址}`);
-							[aRecords, aaaaRecords] = await Promise.all([
-								DoH查询(地址, 'A', 'https://dns.google/dns-query'),
-								DoH查询(地址, 'AAAA', 'https://dns.google/dns-query')
-							]);
-							ipv4List = aRecords.filter(r => r.type === 1).map(r => r.data);
-							ipv6List = aaaaRecords.filter(r => r.type === 28).map(r => `[${r.data}]`);
-							ipAddresses = [...ipv4List, ...ipv6List];
-						}
-
-						if (ipAddresses.length > 0) {
-							resultGroup.push(...ipAddresses.map(ip => [ip, 端口]));
-						} else {
-							resultGroup.push([地址, 端口]);
+							localResults.push(...prefixes.map(prefix => 解析地址端口字符串(prefix)));
 						}
 					} else {
-						resultGroup.push([地址, 端口]);
-					}
-				}
-				return resultGroup;
-			}));
+						let [地址, 端口] = 解析地址端口字符串(singleProxyIP);
 
-			for (const group of chunkResults) {
-				所有反代数组.push(...group);
+						if (singleProxyIP.includes('.tp')) {
+							const tpMatch = singleProxyIP.match(/\.tp(\d+)/);
+							if (tpMatch) 端口 = parseInt(tpMatch[1], 10);
+						}
+
+						// 判断是否是域名（非IP地址）
+						const ipv4Regex = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/;
+						const ipv6Regex = /^\[?([a-fA-F0-9:]+)\]?$/;
+
+						if (!ipv4Regex.test(地址) && !ipv6Regex.test(地址)) {
+							// 并行查询 A 和 AAAA 记录
+							let [aRecords, aaaaRecords] = await Promise.all([
+								DoH查询(地址, 'A'),
+								DoH查询(地址, 'AAAA')
+							]);
+
+							let ipv4List = aRecords.filter(r => r.type === 1).map(r => r.data);
+							let ipv6List = aaaaRecords.filter(r => r.type === 28).map(r => `[${r.data}]`);
+							let ipAddresses = [...ipv4List, ...ipv6List];
+
+							// 默认DoH无结果时，切换Google DoH重试
+							if (ipAddresses.length === 0) {
+								log(`[反代解析] 默认DoH未获取到解析结果，切换Google DoH重试 ${地址}`);
+								[aRecords, aaaaRecords] = await Promise.all([
+									DoH查询(地址, 'A', 'https://dns.google/dns-query'),
+									DoH查询(地址, 'AAAA', 'https://dns.google/dns-query')
+								]);
+								ipv4List = aRecords.filter(r => r.type === 1).map(r => r.data);
+								ipv6List = aaaaRecords.filter(r => r.type === 28).map(r => `[${r.data}]`);
+								ipAddresses = [...ipv4List, ...ipv6List];
+							}
+
+							if (ipAddresses.length > 0) {
+								localResults.push(...ipAddresses.map(ip => [ip, 端口]));
+							} else {
+								localResults.push([地址, 端口]);
+							}
+						} else {
+							localResults.push([地址, 端口]);
+						}
+					}
+				} catch (error) {
+					console.error(`解析反代IP失败 (${singleProxyIP}):`, error);
+				}
+				return localResults;
+			});
+
+			const results = await Promise.all(batchPromises);
+			for (const res of results) {
+				所有反代数组.push(...res);
 			}
 		}
 
