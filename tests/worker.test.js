@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML } from '../_worker.js';
+import { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 读取config_JSON } from '../_worker.js';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -45,6 +45,20 @@ test('是否跳过非SUB日志KV写入 (Skip Non-Sub Log KV Writes)', async (t) 
 	});
 });
 
+test('是否跳过Get_SUB日志KV写入 (Skip Get_SUB Log KV Writes)', async (t) => {
+	await t.test('should keep first Get_SUB log on the KV path', () => {
+		assert.equal(是否跳过GetSUB日志KV写入({ TYPE: 'Get_SUB', IP: '1.2.3.4', URL: 'https://example.com/sub-a', UA: 'ua', TIME: Date.now() }), false);
+	});
+
+	await t.test('should skip repeated Get_SUB logs within the cache window', () => {
+		const now = Date.now();
+		const 日志内容 = { TYPE: 'Get_SUB', IP: '5.6.7.8', URL: 'https://example.com/sub-b', UA: 'ua', TIME: now };
+		assert.equal(是否跳过GetSUB日志KV写入(日志内容), false, 'first write should pass through');
+		assert.equal(是否跳过GetSUB日志KV写入({ ...日志内容, TIME: now + 60_000 }), true, 'repeat within 30 minutes should skip');
+		assert.equal(是否跳过GetSUB日志KV写入({ ...日志内容, TIME: now + 31 * 60_000 }), false, 'repeat after window should write again');
+	});
+});
+
 test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 	await t.test('should return remote response when fetch succeeds', async () => {
 		const remoteFetch = async () => new Response('remote login', { status: 200, headers: { 'X-Test': '1' } });
@@ -66,5 +80,63 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 	await t.test('should generate route-specific fallback copy for noADMIN and noKV', () => {
 		assert.match(生成本地NoADMIN页HTML('example.com'), /还没有配置 ADMIN/);
 		assert.match(生成本地NoKV页HTML('example.com'), /还没有绑定 KV/);
+	});
+});
+
+test('读取config_JSON contract split (Base Config / Admin Extensions)', async (t) => {
+	const createMockKV = (values) => {
+		const gets = [];
+		const puts = [];
+		return {
+			gets,
+			puts,
+			get: async (key) => {
+				gets.push(key);
+				return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : null;
+			},
+			put: async (key, value) => {
+				puts.push([key, value]);
+			},
+		};
+	};
+
+	await t.test('should keep base config loading on config.json only', async () => {
+		const kv = createMockKV({});
+		const result = await 读取config_JSON({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0', false, false);
+		assert.deepEqual(kv.gets, ['config.json']);
+		assert.deepEqual(kv.puts.length, 1);
+		assert.equal(kv.puts[0][0], 'config.json');
+		assert.equal(result.HOST, 'example.com');
+		assert.equal(result.UUID, 'uuid-123');
+		assert.equal(result.TG.启用, false);
+		assert.equal(result.CF.Usage.success, false);
+	});
+
+	await t.test('should load tg.json and cf.json only when admin extensions are requested', async () => {
+		const kv = createMockKV({
+			'tg.json': JSON.stringify({ BotToken: 'bot-secret', ChatID: 'chat-id' }),
+			'cf.json': JSON.stringify({ UsageAPI: 'https://example.com/usage' }),
+		});
+		const originalFetch = global.fetch;
+		global.fetch = async (input) => {
+			assert.equal(String(input), 'https://example.com/usage');
+			return new Response(JSON.stringify({ success: true, pages: 1, workers: 2, total: 3, max: 4 }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			});
+		};
+
+		try {
+			const result = await 读取config_JSON({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0', false, true);
+			assert.deepEqual(kv.gets, ['config.json', 'tg.json', 'cf.json']);
+			assert.equal(kv.puts.length, 1);
+			assert.equal(kv.puts[0][0], 'config.json');
+			assert.equal(result.TG.ChatID, 'chat-id');
+			assert.notEqual(result.TG.BotToken, 'bot-secret');
+			assert.equal(result.CF.Usage.success, true);
+			assert.equal(result.CF.Usage.pages, 1);
+		} finally {
+			global.fetch = originalFetch;
+		}
 	});
 });

@@ -5,11 +5,12 @@ const Version = '2026-04-10 06:03:17';
 	'cloudflare\u003asockets';
 let config_JSON, 反代IP = '', 启用SOCKS5反代 = null, 启用SOCKS5全局反代 = false, 我的SOCKS5账号 = '', parsedSocks5Address = {};
 let 缓存反代IP, 缓存反代解析数组, 缓存反代数组索引 = 0, 启用反代兜底 = true, 调试日志打印 = false;
+const GetSUB日志最近写入缓存 = new Map();
 const 非SUB日志最近写入缓存 = new Map();
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
-export { 掩码敏感信息, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML };
+export { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 读取config_JSON };
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
@@ -144,11 +145,11 @@ export default {
 						return new Response(JSON.stringify(检测代理响应, null, 2), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 					}
 
-					config_JSON = await 读取config_JSON(env, host, userID, UA);
+					config_JSON = await 读取config_JSON(env, host, userID, UA, false, true);
 
 					if (访问路径 === 'admin/init') {// 重置配置为默认值
 						try {
-							config_JSON = await 读取config_JSON(env, host, userID, UA, true);
+							config_JSON = await 读取config_JSON(env, host, userID, UA, true, true);
 							ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Init_Config', config_JSON));
 							config_JSON.init = '配置已重置为默认值';
 							return new Response(JSON.stringify(config_JSON, null, 2), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
@@ -258,7 +259,7 @@ export default {
 				} else if (访问路径 === 'sub') {//处理订阅请求
 					const 订阅TOKEN = await safeHash(host + userID), 作为优选订阅生成器 = ['1', 'true'].includes(env.BEST_SUB) && url.searchParams.get('host') === 'example.com' && url.searchParams.get('uuid') === '00000000-0000-4000-8000-000000000000' && UA.toLowerCase().includes('tunnel (https://github.com/cmliu/edge');
 					if (url.searchParams.get('token') === 订阅TOKEN || 作为优选订阅生成器) {
-						config_JSON = await 读取config_JSON(env, host, userID, UA);
+						config_JSON = await 读取config_JSON(env, host, userID, UA, false, false);
 						if (作为优选订阅生成器) ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Get_Best_SUB', config_JSON, false));
 						else ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Get_SUB', config_JSON));
 						const ua = UA.toLowerCase();
@@ -2419,6 +2420,7 @@ async function 请求日志记录(env, request, 访问IP, 请求类型 = "Get_SU
 		}
 		是否写入KV日志 = ['1', 'true'].includes(env.OFF_LOG) ? false : 是否写入KV日志;
 		if (!是否写入KV日志) return;
+		if (请求类型 === "Get_SUB" && 是否跳过GetSUB日志KV写入(日志内容)) return;
 		if (请求类型 !== "Get_SUB" && 是否跳过非SUB日志KV写入(日志内容)) return;
 		let 日志数组 = [];
 		const 现有日志 = await env.KV.get('log.json'), KV容量限制 = 4;//MB
@@ -2455,6 +2457,24 @@ function 是否跳过非SUB日志KV写入(日志内容) {
 		return false;
 	} catch (error) {
 		console.error(`非SUB日志缓存判断失败: ${error.message}`);
+		return false;
+	}
+}
+
+function 是否跳过GetSUB日志KV写入(日志内容) {
+	try {
+		if (日志内容.TYPE !== "Get_SUB") return false;
+		const 当前时间戳 = 日志内容.TIME;
+		const 签名 = `${日志内容.TYPE}|${日志内容.IP}|${日志内容.URL}|${日志内容.UA}`;
+		const 最近写入时间 = GetSUB日志最近写入缓存.get(签名);
+		if (最近写入时间 && 当前时间戳 - 最近写入时间 < 30 * 60 * 1000) return true;
+		GetSUB日志最近写入缓存.set(签名, 当前时间戳);
+		for (const [key, value] of GetSUB日志最近写入缓存.entries()) {
+			if (当前时间戳 - value >= 30 * 60 * 1000) GetSUB日志最近写入缓存.delete(key);
+		}
+		return false;
+	} catch (error) {
+		console.error(`Get_SUB日志缓存判断失败: ${error.message}`);
 		return false;
 	}
 }
@@ -2792,7 +2812,7 @@ async function getECH(host) {
 	}
 }
 
-async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重置配置 = false) {
+async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重置配置 = false, 包含管理扩展 = false) {
 	const _p = atob("UFJPWFlJUA==");
 	const host = hostname, Ali_DoH = "https://dns.alidns.com/dns-query", ECH_SNI = "cloudflare-ech.com", 占位符 = '{{IP:PORT}}', 初始化开始时间 = performance.now(), 默认配置JSON = {
 		TIME: new Date().toISOString(),
@@ -2950,53 +2970,56 @@ async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重�
 		: `${config_JSON.协议类型}://${userID}@${host}:443?security=tls&type=${传输协议 + ECHLINK参数}&${域名字段名}=${host}&fp=${config_JSON.Fingerprint}&sni=${host}&${路径字段名}=${encodeURIComponent(传输路径参数值) + TLS分片参数}&encryption=none${config_JSON.跳过证书验证 ? '&insecure=1&allowInsecure=1' : ''}#${encodeURIComponent(config_JSON.优选订阅生成.SUBNAME)}`;
 	config_JSON.优选订阅生成.TOKEN = await safeHash(hostname + userID);
 
-	const 初始化TG_JSON = { BotToken: null, ChatID: null };
-	config_JSON.TG = { 启用: config_JSON.TG.启用 ? config_JSON.TG.启用 : false, ...初始化TG_JSON };
-	try {
-		const TG_TXT = await env.KV.get('tg.json');
-		if (!TG_TXT) {
-			await env.KV.put('tg.json', JSON.stringify(初始化TG_JSON, null, 2));
-		} else {
-			const TG_JSON = JSON.parse(TG_TXT);
-			config_JSON.TG.ChatID = TG_JSON.ChatID ? TG_JSON.ChatID : null;
-			config_JSON.TG.BotToken = TG_JSON.BotToken ? 掩码敏感信息(TG_JSON.BotToken) : null;
-		}
-	} catch (error) {
-		console.error(`读取tg.json出错: ${error.message}`);
-	}
+		const 初始化TG_JSON = { BotToken: null, ChatID: null };
+		config_JSON.TG = { 启用: config_JSON.TG.启用 ? config_JSON.TG.启用 : false, ...初始化TG_JSON };
+		const 初始化CF_JSON = { Email: null, GlobalAPIKey: null, AccountID: null, APIToken: null, UsageAPI: null };
+		config_JSON.CF = { ...初始化CF_JSON, Usage: { success: false, pages: 0, workers: 0, total: 0, max: 100000 } };
 
-	const 初始化CF_JSON = { Email: null, GlobalAPIKey: null, AccountID: null, APIToken: null, UsageAPI: null };
-	config_JSON.CF = { ...初始化CF_JSON, Usage: { success: false, pages: 0, workers: 0, total: 0, max: 100000 } };
-	try {
-		const CF_TXT = await env.KV.get('cf.json');
-		if (!CF_TXT) {
-			await env.KV.put('cf.json', JSON.stringify(初始化CF_JSON, null, 2));
-		} else {
-			const CF_JSON = JSON.parse(CF_TXT);
-			if (CF_JSON.UsageAPI) {
-				try {
-					const response = await fetch(CF_JSON.UsageAPI);
-					const Usage = await response.json();
-					config_JSON.CF.Usage = Usage;
-				} catch (err) {
-					console.error(`请求 CF_JSON.UsageAPI 失败: ${err.message}`);
+		if (包含管理扩展) {
+			try {
+				const TG_TXT = await env.KV.get('tg.json');
+				if (!TG_TXT) {
+					await env.KV.put('tg.json', JSON.stringify(初始化TG_JSON, null, 2));
+				} else {
+					const TG_JSON = JSON.parse(TG_TXT);
+					config_JSON.TG.ChatID = TG_JSON.ChatID ? TG_JSON.ChatID : null;
+					config_JSON.TG.BotToken = TG_JSON.BotToken ? 掩码敏感信息(TG_JSON.BotToken) : null;
 				}
-			} else {
-				config_JSON.CF.Email = CF_JSON.Email ? CF_JSON.Email : null;
-				config_JSON.CF.GlobalAPIKey = CF_JSON.GlobalAPIKey ? 掩码敏感信息(CF_JSON.GlobalAPIKey) : null;
-				config_JSON.CF.AccountID = CF_JSON.AccountID ? 掩码敏感信息(CF_JSON.AccountID) : null;
-				config_JSON.CF.APIToken = CF_JSON.APIToken ? 掩码敏感信息(CF_JSON.APIToken) : null;
-				config_JSON.CF.UsageAPI = null;
-				const Usage = await getCloudflareUsage(CF_JSON.Email, CF_JSON.GlobalAPIKey, CF_JSON.AccountID, CF_JSON.APIToken);
-				config_JSON.CF.Usage = Usage;
+			} catch (error) {
+				console.error(`读取tg.json出错: ${error.message}`);
+			}
+
+			try {
+				const CF_TXT = await env.KV.get('cf.json');
+				if (!CF_TXT) {
+					await env.KV.put('cf.json', JSON.stringify(初始化CF_JSON, null, 2));
+				} else {
+					const CF_JSON = JSON.parse(CF_TXT);
+					if (CF_JSON.UsageAPI) {
+						try {
+							const response = await fetch(CF_JSON.UsageAPI);
+							const Usage = await response.json();
+							config_JSON.CF.Usage = Usage;
+						} catch (err) {
+							console.error(`请求 CF_JSON.UsageAPI 失败: ${err.message}`);
+						}
+					} else {
+						config_JSON.CF.Email = CF_JSON.Email ? CF_JSON.Email : null;
+						config_JSON.CF.GlobalAPIKey = CF_JSON.GlobalAPIKey ? 掩码敏感信息(CF_JSON.GlobalAPIKey) : null;
+						config_JSON.CF.AccountID = CF_JSON.AccountID ? 掩码敏感信息(CF_JSON.AccountID) : null;
+						config_JSON.CF.APIToken = CF_JSON.APIToken ? 掩码敏感信息(CF_JSON.APIToken) : null;
+						config_JSON.CF.UsageAPI = null;
+						const Usage = await getCloudflareUsage(CF_JSON.Email, CF_JSON.GlobalAPIKey, CF_JSON.AccountID, CF_JSON.APIToken);
+						config_JSON.CF.Usage = Usage;
+					}
+				}
+			} catch (error) {
+				console.error(`读取cf.json出错: ${error.message}`);
 			}
 		}
-	} catch (error) {
-		console.error(`读取cf.json出错: ${error.message}`);
-	}
 
-	config_JSON.加载时间 = (performance.now() - 初始化开始时间).toFixed(2) + 'ms';
-	return config_JSON;
+		config_JSON.加载时间 = (performance.now() - 初始化开始时间).toFixed(2) + 'ms';
+		return config_JSON;
 }
 
 async function 生成随机IP(request, count = 16, 指定端口 = -1, TLS = true) {
