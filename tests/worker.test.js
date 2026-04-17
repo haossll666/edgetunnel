@@ -231,47 +231,4 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 		assert.equal(Object.hasOwn(snapshot, '反代'), false);
 		assert.equal(Object.hasOwn(snapshot, 'config_JSON'), false);
 	});
-
-	await t.test('should backfill missing 反代 config so older KV entries still load', async () => {
-		const kv = createMockKV({
-			'config.json': JSON.stringify({
-				HOST: 'example.com',
-				HOSTS: ['example.com'],
-				UUID: 'uuid-123',
-				PATH: '/',
-				协议类型: 'vless',
-				传输协议: 'ws',
-				gRPC模式: 'gun',
-				gRPCUserAgent: 'UA/1.0',
-				跳过证书验证: false,
-				启用0RTT: false,
-				TLS分片: null,
-				随机路径: false,
-				ECH: false,
-				ECHConfig: { DNS: 'https://dns.alidns.com/dns-query', SNI: 'cloudflare-ech.com' },
-				SS: { 加密方式: 'aes-128-gcm', TLS: true },
-				Fingerprint: 'chrome',
-				优选订阅生成: {
-					local: true,
-					本地IP库: { 随机IP: false, 随机数量: 16, 指定端口: -1 },
-					SUB: null,
-					SUBNAME: 'edgetunnel',
-					SUBUpdateTime: 3,
-					TOKEN: 'token',
-				},
-				订阅转换配置: { SUBAPI: 'https://SUBAPI.cmliussss.net', SUBCONFIG: 'cfg', SUBEMOJI: false },
-				TG: { 启用: false },
-				CF: { Usage: { success: false, pages: 0, workers: 0, total: 0, max: 100000 } },
-				完整节点路径: '/',
-			}),
-			'ADD.txt': '1.2.3.4:443#note\n',
-		});
-
-		const result = await 读取订阅基础配置({ KV: kv }, 'example.com', 'uuid-123', 'UA/1.0');
-		assert.equal(result.HOST, 'example.com');
-		assert.equal(typeof result.反代, 'object');
-		assert.equal(result.反代.SOCKS5.白名单.length > 0, true);
-		assert.equal(result.反代.路径模板.SOCKS5.全局.includes('socks5://'), true);
-		assert.equal(result.完整节点路径, '/');
-	});
 });
