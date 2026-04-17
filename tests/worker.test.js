@@ -247,3 +247,34 @@ test('生成管理诊断视图 (Admin Diagnostics View)', async (t) => {
 		assert.equal(view.recovery[0], '先确认 /admin 可打开');
 	});
 });
+
+test('清理配置缓存 (Config Cache Reset)', async (t) => {
+	await t.test('should clear both TG and CF caches', async () => {
+		清理配置缓存();
+		let tgGets = 0;
+		let cfGets = 0;
+		const env = {
+			KV: {
+				get: async (key) => {
+					if (key === 'tg.json') {
+						tgGets += 1;
+						return JSON.stringify({ BotToken: 'bot', ChatID: 'chat' });
+					}
+					if (key === 'cf.json') {
+						cfGets += 1;
+						return JSON.stringify({ Email: 'a@example.com' });
+					}
+					return null;
+				},
+				put: async () => {},
+			},
+		};
+		await 读取TG配置(env);
+		await 读取CF配置(env);
+		清理配置缓存();
+		await 读取TG配置(env);
+		await 读取CF配置(env);
+		assert.equal(tgGets, 2);
+		assert.equal(cfGets, 2);
+	});
+});

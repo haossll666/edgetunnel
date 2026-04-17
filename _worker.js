@@ -178,6 +178,7 @@ export default {
 
 								// 保存到 KV
 								await env.KV.put('config.json', JSON.stringify(newConfig, null, 2));
+								清理配置缓存();
 								ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Save_Config', config_JSON));
 								return new Response(JSON.stringify({ success: true, message: '配置已保存' }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 							} catch (error) {
@@ -204,6 +205,7 @@ export default {
 
 								// 保存到 KV
 								await env.KV.put('cf.json', JSON.stringify(CF_JSON, null, 2));
+								清理配置缓存();
 								ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Save_Config', config_JSON));
 								return new Response(JSON.stringify({ success: true, message: '配置已保存' }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 							} catch (error) {
@@ -220,6 +222,7 @@ export default {
 									if (!newConfig.BotToken || !newConfig.ChatID) return new Response(JSON.stringify({ error: '配置不完整' }), { status: 400, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 									await env.KV.put('tg.json', JSON.stringify(newConfig, null, 2));
 								}
+								清理配置缓存();
 								ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Save_Config', config_JSON));
 								return new Response(JSON.stringify({ success: true, message: '配置已保存' }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 							} catch (error) {
