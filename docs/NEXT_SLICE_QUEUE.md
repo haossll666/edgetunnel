@@ -6,28 +6,54 @@ Update it after every shipped slice.
 
 ## NOW
 
-### Q7: Broaden admin/static local fallback coverage
+### Q8: Bandwidth and stability optimization kickoff
 
 Status:
-Completed.
+Planned.
 
 Goal:
-Broaden the local fallback story for admin/static routes without touching subscription output.
+Define the first low-risk optimization slice for bandwidth and connection stability without changing the working subscription onboarding contract.
 
 Scope:
 
-- admin/static fallback routes
-- tests and docs for the fallback contract
+- queue and handoff for the optimization sequence
+- contract notes for stable-default node strategy
+- observability and recovery guidance
 
 Done when:
 
-- `/admin` falls back to a usable local shell when Pages is unavailable
-- the existing login/noADMIN/noKV local fallbacks remain intact
-- admin QR onboarding and `/sub` output remain untouched
+- the next slice is explicitly bounded
+- the project keeps the current working `/sub` onboarding path intact
+- the optimization queue prioritizes stability over aggressive node breadth
 
 ## NEXT
 
-### No active low-risk slices
+### Q8-1: Stable-default node and route strategy
 
 Status:
-Q5/Q6 are blocked behind the `/sub` contract boundary and the current queue has no further low-risk unblocked work.
+Planned.
+
+Goal:
+Review the current default node ordering and route behavior from a stability-first perspective, then define the smallest safe change that can improve first-connect reliability.
+
+Scope:
+
+- node ordering and default entry selection
+- iOS-friendly first-hop behavior
+- tests that protect the onboarding contract
+
+## LATER
+
+### Q8-2: Hot-path observability and KV pressure review
+
+Status:
+Deferred.
+
+Goal:
+Inspect which logs or KV reads can be reduced further on hot paths once the stable-default strategy is in place.
+
+Scope:
+
+- `/sub` logging pressure
+- route-level diagnostics
+- operator recovery notes
