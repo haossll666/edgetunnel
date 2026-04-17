@@ -13,6 +13,7 @@ import {
 	读取管理配置,
 	重置并读取管理配置,
 	提取订阅配置快照,
+	构建稳定订阅入口优先列表,
 	读取config_JSON
 } from '../_worker.js';
 
@@ -101,6 +102,21 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 		assert.match(body, /后台可用，但外部 Pages 暂时不可达/);
 		assert.match(body, /href="\/admin\/config\.json"/);
 		assert.match(body, /href="\/logout"/);
+	});
+});
+
+test('构建稳定订阅入口优先列表 (Prefer Stable Host Entry First)', async (t) => {
+	await t.test('should prepend the stable host entry ahead of IP candidates', () => {
+		const result = 构建稳定订阅入口优先列表('example.com', '443', ['1.2.3.4:443#A', '2.3.4.5:443#B']);
+		assert.equal(result[0], 'example.com:443#example.com 稳定入口');
+		assert.deepEqual(result.slice(1), ['1.2.3.4:443#A', '2.3.4.5:443#B']);
+	});
+
+	await t.test('should not duplicate the stable host entry when it already exists', () => {
+		const result = 构建稳定订阅入口优先列表('example.com', '443', ['example.com:443#old', '1.2.3.4:443#A']);
+		assert.equal(result.length, 2);
+		assert.equal(result[0], 'example.com:443#example.com 稳定入口');
+		assert.equal(result[1], '1.2.3.4:443#A');
 	});
 });
 
