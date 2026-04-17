@@ -6,37 +6,37 @@ Update it after every shipped slice.
 
 ## NOW
 
-### Q8-3: Route diagnostics and recovery notes
+### Q8-4: Follow-up logging refinements
 
 Status:
 Completed.
 
 Goal:
-Make the recovery path for mainland users explicit before touching more runtime behavior.
+Keep the hot path small by gating unnecessary log work as early as possible.
 
 Scope:
 
-- route-level diagnostics
-- operator recovery notes
-- README guidance for `/admin` / `/admin/config.json` / `/sub`
+- log-recording gate
+- early OFF_LOG short-circuit
+- tests for the logging gate
 
 Done when:
 
-- the README includes a clear mainland troubleshooting sequence
-- the contract boundaries are stated before more runtime changes
+- OFF_LOG disables both repeated KV logging and Telegram notification work
+- tests cover the logging gate
 - the onboarding contract remains intact
 
 ## NEXT
 
-### Q8-4: Follow-up logging refinements
+### Q8-5: Evaluate whether route diagnostics need runtime helpers
 
 Status:
 Planned.
 
 Goal:
-Decide whether the next gain should come from lighter `/sub` diagnostics or from additional operator-facing logging refinements.
+Decide whether route diagnostics should remain docs-only or justify a tiny runtime helper.
 
 Scope:
 
-- potential follow-up logging refinements
-- route diagnostics if runtime helpers are justified
+- docs-only diagnostics refinement
+- tiny runtime helper only if there is a measurable recovery benefit

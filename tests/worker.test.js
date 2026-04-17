@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 读取TG配置, 读取config_JSON } from '../_worker.js';
+import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 读取TG配置, 读取config_JSON } from '../_worker.js';
 
 test('掩码敏感信息 (Mask Sensitive Info)', async (t) => {
 
@@ -157,6 +157,18 @@ test('生成订阅稳定首项 (Stable Subscription First Entry)', async (t) => 
 	await t.test('should return empty string when LINK is missing', () => {
 		assert.equal(生成订阅稳定首项({}), '');
 		assert.equal(生成订阅稳定首项({ LINK: '   ' }), '');
+	});
+});
+
+test('是否启用日志记录 (Log Recording Gate)', async (t) => {
+	await t.test('should disable logging when OFF_LOG is enabled', () => {
+		assert.equal(是否启用日志记录({ OFF_LOG: '1' }), false);
+		assert.equal(是否启用日志记录({ OFF_LOG: 'true' }), false);
+	});
+
+	await t.test('should keep logging enabled by default', () => {
+		assert.equal(是否启用日志记录({}), true);
+		assert.equal(是否启用日志记录({ OFF_LOG: '0' }), true);
 	});
 });
 
