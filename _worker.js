@@ -1,4 +1,5 @@
 const Version = '2026-04-10 06:03:17';
+const WorkerGitDescribe = 'GIT_DESCRIBE_NOT_SET';
 /*In our project workflow, we first*/ import //the necessary modules, 
 /*then*/ { connect }//to the central server, 
 /*and all data flows*/ from//this single source.
@@ -1987,6 +1988,9 @@ function 生成管理诊断视图(url, config_JSON = {}, env = {}) {
 			'再确认 /admin/config.json 里仍有 config_JSON.LINK',
 			'最后直接验证 /sub?token=... 是否能返回订阅',
 		],
+		build: {
+			gitDescribe: WorkerGitDescribe,
+		},
 	};
 }
 
@@ -2648,6 +2652,7 @@ function 生成本地Admin页HTML(host) {
 	<main>
 		<h1>后台可用，但外部 Pages 暂时不可达</h1>
 		<p>站点 <strong>${转义HTML(host)}</strong> 的外部管理页面暂时加载失败，所以这里提供本地可用的管理入口。订阅内容和后端接口还在，先从这些入口继续排障。</p>
+		<p class="meta">构建标识 <code>${转义HTML(WorkerGitDescribe)}</code>（与 <code>/admin/diagnostics</code> 中 <code>build.gitDescribe</code> 一致）</p>
 		<div class="grid">
 			<a class="card" href="/login"><strong>返回登录</strong><span>重新进入管理员登录流程。</span></a>
 			<a class="card" href="/admin/config.json"><strong>配置 JSON</strong><span>查看当前配置快照。</span></a>

@@ -2,11 +2,11 @@
 
 Update it after every shipped slice.
 
-## [WIP] S1-4 — E3 构建 tag 注入
+## [WIP] Stage 2 — A5（按需求 §6 顺序）
 
 Status: next.
 
-Goal: `git describe --tags --dirty` 注入 `_worker.js` 常量 + `/admin/diagnostics` 回显（不改 RL）。
+Goal：见 `docs/brainstorms/edgetunnel-improvement-directions-20260417-requirements.md` §3 / §6。
 
 ## NOW
 
@@ -14,9 +14,13 @@ Goal: `git describe --tags --dirty` 注入 `_worker.js` 常量 + `/admin/diagnos
 
 ## NEXT
 
-- Stage 2：A5 / B2 / B1 / E1 / F1+F3 …
+- B2 → B1（spike）→ E1 → F1+F3 …
 
 ## Done
+
+### S1-4 — E3 构建 tag / git describe 可见性
+
+Status: Done — `WorkerGitDescribe`、`scripts/stamp-git-describe.mjs`、`.github/workflows/test.yml`、诊断 JSON + 本地 Admin 兜底文案。
 
 ### S1-3 — C2 登录失败指数退避
 

@@ -1,0 +1,24 @@
+name: test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Stamp git describe into WorkerGitDescribe
+        run: node scripts/stamp-git-describe.mjs
+
+      - name: Run tests
+        run: node --loader ./tests/loader.mjs --test tests/*.test.js

@@ -139,6 +139,12 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 		assert.match(body, /href="\/admin\/diagnostics"/);
 		assert.match(body, /href="\/logout"/);
 	});
+
+	await t.test('本地 Admin 兜底应含构建标识（E3）', () => {
+		const body = 生成本地Admin页HTML('example.com');
+		assert.match(body, /构建标识/);
+		assert.match(body, /build\.gitDescribe/);
+	});
 });
 
 test('读取config_JSON contract split (Base Config / Admin Extensions)', async (t) => {
@@ -382,6 +388,8 @@ test('生成管理诊断视图 (Admin Diagnostics View)', async (t) => {
 		assert.equal(view.logging.offLog, true);
 		assert.ok(Array.isArray(view.recovery));
 		assert.equal(view.recovery[0], '先确认 /admin 可打开');
+		assert.equal(typeof view.build.gitDescribe, 'string');
+		assert.ok(view.build.gitDescribe.length > 0);
 	});
 });
 
