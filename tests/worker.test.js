@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值 } from '../_worker.js';
+import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数 } from '../_worker.js';
 import { createKvMock } from './_kv-mock.mjs';
 
 test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
@@ -441,6 +441,76 @@ test('请求日志记录 — KV 写入 log.json (D3)', async (t) => {
 		assert.ok(Array.isArray(日志数组));
 		assert.equal(日志数组[0].TYPE, 'D3_KV_Test');
 		assert.equal(日志数组[0].IP, '198.51.100.2');
+	});
+});
+
+test('C2 — 登录失败指数退避（KV 仅状态跃迁 + 日写熔断）', async (t) => {
+	const reqLogin = (ip, bodyStr) => {
+		const base = new Request('https://et.example/login', {
+			method: 'POST',
+			headers: { 'CF-Connecting-IP': ip, 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: bodyStr,
+		});
+		return new Proxy(base, {
+			get(target, prop, receiver) {
+				if (prop === 'cf') return { colo: 'TST', asn: 13335 };
+				return Reflect.get(target, prop, receiver);
+			},
+		});
+	};
+
+	await t.test('锁定时长：5min → 10min → 封顶 24h', () => {
+		assert.equal(登录退避_计算锁定时长毫秒(0), 300000);
+		assert.equal(登录退避_计算锁定时长毫秒(1), 600000);
+		assert.equal(登录退避_计算锁定时长毫秒(12), 86400000);
+		assert.equal(登录退避_计算锁定时长毫秒(99), 86400000);
+	});
+
+	await t.test('前四次错误不落 KV put；第五次写入一次', async () => {
+		登录退避_测试重置内存();
+		const { kv, putCalls } = createKvMock({});
+		const env = { KEY: 'k', ADMIN: 'goodpw', KV: kv };
+		const ip = '203.0.113.10';
+		for (let i = 0; i < 4; i++) {
+			const res = await worker.fetch(reqLogin(ip, 'password=bad'), env, {});
+			assert.equal(res.status, 401, `round ${i + 1}`);
+		}
+		assert.equal(putCalls.length, 0);
+		const res5 = await worker.fetch(reqLogin(ip, 'password=bad'), env, {});
+		assert.equal(res5.status, 401);
+		assert.equal(putCalls.length, 1);
+		const stored = JSON.parse(putCalls[0][1]);
+		assert.ok(stored.锁定且直到 > Date.now());
+		assert.equal(stored.下一档锁梯级, 1);
+		const res6 = await worker.fetch(reqLogin(ip, 'password=bad'), env, {});
+		assert.equal(res6.status, 429);
+		assert.equal(putCalls.length, 1);
+	});
+
+	await t.test('日写 ≥800 时第五次不再 put（内存锁定）', async () => {
+		登录退避_测试重置内存();
+		登录退避_测试置日写次数(800);
+		const { kv, putCalls } = createKvMock({});
+		const env = { KEY: 'k', ADMIN: 'goodpw', KV: kv };
+		const ip = '203.0.113.20';
+		for (let i = 0; i < 5; i++) {
+			await worker.fetch(reqLogin(ip, 'password=bad'), env, {});
+		}
+		assert.equal(putCalls.length, 0);
+		assert.equal(登录退避_当日KV写次数(), 800);
+	});
+
+	await t.test('登录成功 delete 计一次日写', async () => {
+		登录退避_测试重置内存();
+		const { kv, putCalls, deleteCalls } = createKvMock({
+			[`login_attempts_203.0.113.30`]: JSON.stringify({ 锁定且直到: Date.now() - 5000, 下一档锁梯级: 1 }),
+		});
+		const env = { KEY: 'k', ADMIN: 'goodpw', KV: kv };
+		const before = 登录退避_当日KV写次数();
+		const res = await worker.fetch(reqLogin('203.0.113.30', 'password=goodpw'), env, {});
+		assert.equal(res.status, 200);
+		assert.ok(deleteCalls.includes('login_attempts_203.0.113.30'));
+		assert.equal(登录退避_当日KV写次数(), before + 1);
 	});
 });
 

@@ -7,13 +7,19 @@ let config_JSON, 反代IP = '', 启用SOCKS5反代 = null, 启用SOCKS5全局反
 let 缓存反代IP, 缓存反代解析数组, 缓存反代数组索引 = 0, 启用反代兜底 = true, 调试日志打印 = false;
 const GetSUB日志最近写入缓存 = new Map();
 const 非SUB日志最近写入缓存 = new Map();
+/** C2：登录失败指数退避 — 连续错误次数（1–4 仅内存）；KV 日写熔断（UTC） */
+const 登录失败连续错误次数 = new Map();
+const 登录失败内存锁定档 = new Map();
+let 登录KV写计数UTC日 = '';
+let 登录KV当日写入次数 = 0;
+const 登录KV日写上限 = 800;
 const TG配置缓存 = new Map();
 const CF配置缓存 = new Map();
 const 基础配置缓存 = new Map();
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
-export { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值 };
+export { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应 };
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
@@ -69,38 +75,20 @@ export default {
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
 					if (authCookie === await 管理员会话Cookie值(request, env, UA, 加密秘钥, 管理员密码, 访问IP)) return new Response('重定向中...', { status: 302, headers: { 'Location': '/admin' } });
 					if (request.method === 'POST') {
-						const 访问IP限制键 = `login_attempts_${访问IP}`;
-						let 尝试次数 = 0;
-						if (env.KV && typeof env.KV.get === 'function') {
-							const 记录 = await env.KV.get(访问IP限制键);
-							if (记录) {
-								const 解析记录 = JSON.parse(记录);
-								if (解析记录.锁定且直到 > Date.now()) {
-									return new Response(JSON.stringify({ error: `尝试次数过多，请在 ${Math.ceil((解析记录.锁定且直到 - Date.now()) / 1000)} 秒后重试` }), { status: 429, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-								}
-								尝试次数 = 解析记录.次数 || 0;
-							}
-						}
+						const 锁定响应 = await 登录退避_若已锁定则响应(env, 访问IP);
+						if (锁定响应) return 锁定响应;
 
 						const formData = await request.text();
 						const params = new URLSearchParams(formData);
 						const 输入密码 = params.get('password');
 
 						if (输入密码 === 管理员密码) {
-							// 密码正确，清零错误次数，设置cookie并返回成功标记
-							if (env.KV && typeof env.KV.put === 'function') await env.KV.delete(访问IP限制键);
+							await 登录退避_登录成功清理(env, 访问IP);
 							const 响应 = new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 							响应.headers.set('Set-Cookie', `auth=${await 管理员会话Cookie值(request, env, UA, 加密秘钥, 管理员密码, 访问IP)}; Path=/; Max-Age=86400; HttpOnly; SameSite=Strict; Secure`);
 							return 响应;
-						} else {
-							// 密码错误，记录次数
-							if (env.KV && typeof env.KV.put === 'function') {
-								尝试次数++;
-								const 新记录 = { 次数: 尝试次数, 锁定且直到: 尝试次数 >= 5 ? Date.now() + 300000 : 0 };
-								await env.KV.put(访问IP限制键, JSON.stringify(新记录), { expirationTtl: 300 });
-							}
-							return new Response(JSON.stringify({ error: '密码错误' }), { status: 401, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 						}
+						return await 登录退避_密码错误响应(env, 访问IP);
 					}
 					return await 获取Pages页面或本地兜底('/login', 生成本地登录页HTML(url.host), 200);
 				} else if (访问路径 === 'admin' || 访问路径.startsWith('admin/')) {//验证cookie后响应管理页面
@@ -2726,6 +2714,140 @@ function 生成本地NoKV页HTML(host) {
 	</main>
 </body>
 </html>`;
+}
+
+function 登录退避_UTC日期键() {
+	return new Date().toISOString().slice(0, 10);
+}
+
+function 登录退避_刷新日计() {
+	const d = 登录退避_UTC日期键();
+	if (d !== 登录KV写计数UTC日) {
+		登录KV写计数UTC日 = d;
+		登录KV当日写入次数 = 0;
+	}
+}
+
+function 登录退避_当日KV写次数() {
+	登录退避_刷新日计();
+	return 登录KV当日写入次数;
+}
+
+function 登录退避_测试置日写次数(n) {
+	登录退避_刷新日计();
+	登录KV当日写入次数 = n;
+}
+
+function 登录退避_测试重置内存() {
+	登录失败连续错误次数.clear();
+	登录失败内存锁定档.clear();
+	登录KV写计数UTC日 = '';
+	登录KV当日写入次数 = 0;
+}
+
+function 登录退避_记一次KV写() {
+	登录退避_刷新日计();
+	登录KV当日写入次数++;
+}
+
+function 登录退避_KV写已达上限() {
+	登录退避_刷新日计();
+	return 登录KV当日写入次数 >= 登录KV日写上限;
+}
+
+function 登录退避_计算锁定时长毫秒(梯级) {
+	const t = Math.min(Math.max(Number(梯级) || 0, 0), 12);
+	return Math.min(300000 * Math.pow(2, t), 86400000);
+}
+
+function 登录退避_登录限制键(访问IP) {
+	return `login_attempts_${访问IP}`;
+}
+
+/** @returns {Promise<Response|null>} 429 或 null */
+async function 登录退避_若已锁定则响应(env, 访问IP) {
+	const now = Date.now();
+	const key = 登录退避_登录限制键(访问IP);
+	if (env.KV && typeof env.KV.get === 'function') {
+		const 记录 = await env.KV.get(key);
+		if (记录) {
+			const 解析记录 = JSON.parse(记录);
+			if (解析记录.锁定且直到 > now) {
+				return new Response(JSON.stringify({ error: `尝试次数过多，请在 ${Math.ceil((解析记录.锁定且直到 - now) / 1000)} 秒后重试` }), { status: 429, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
+			}
+		}
+	}
+	if (登录退避_KV写已达上限()) {
+		const m = 登录失败内存锁定档.get(访问IP);
+		if (m && m.锁定且直到 > now) {
+			return new Response(JSON.stringify({ error: `尝试次数过多，请在 ${Math.ceil((m.锁定且直到 - now) / 1000)} 秒后重试` }), { status: 429, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
+		}
+	}
+	return null;
+}
+
+async function 登录退避_登录成功清理(env, 访问IP) {
+	const key = 登录退避_登录限制键(访问IP);
+	登录失败连续错误次数.delete(访问IP);
+	登录失败内存锁定档.delete(访问IP);
+	if (登录退避_KV写已达上限()) return;
+	if (env.KV && typeof env.KV.delete === 'function') {
+		await env.KV.delete(key);
+		登录退避_记一次KV写();
+	}
+}
+
+/** 从旧版 { 次数, 锁定且直到 } 或新版 { 锁定且直到, 下一档锁梯级 } 取下一轮档 */
+function 登录退避_解析下一档锁梯级(解析记录) {
+	if (typeof 解析记录.下一档锁梯级 === 'number' && 解析记录.下一档锁梯级 >= 0) return 解析记录.下一档锁梯级;
+	if (typeof 解析记录.次数 === 'number' && 解析记录.次数 >= 5 && (!解析记录.锁定且直到 || 解析记录.锁定且直到 <= Date.now())) {
+		return 1;
+	}
+	return 0;
+}
+
+/** @returns {Promise<Response>} 401 密码错误（含第 5 次刚写入锁定时） */
+async function 登录退避_密码错误响应(env, 访问IP) {
+	const key = 登录退避_登录限制键(访问IP);
+	let n = (登录失败连续错误次数.get(访问IP) || 0) + 1;
+	登录失败连续错误次数.set(访问IP, n);
+	if (n < 5) {
+		return new Response(JSON.stringify({ error: '密码错误' }), { status: 401, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
+	}
+	登录失败连续错误次数.set(访问IP, 0);
+	const now = Date.now();
+	let 档 = 0;
+	const 用内存档 = 登录退避_KV写已达上限() || !env.KV || typeof env.KV.put !== 'function';
+	if (用内存档) {
+		let gotFromKv = false;
+		if (env.KV && typeof env.KV.get === 'function') {
+			const raw = await env.KV.get(key);
+			if (raw) {
+				档 = 登录退避_解析下一档锁梯级(JSON.parse(raw));
+				gotFromKv = true;
+			}
+		}
+		if (!gotFromKv) {
+			const mem = 登录失败内存锁定档.get(访问IP);
+			if (mem && typeof mem.下一档锁梯级 === 'number') 档 = mem.下一档锁梯级;
+		}
+		const ms = 登录退避_计算锁定时长毫秒(档);
+		登录失败内存锁定档.set(访问IP, { 锁定且直到: now + ms, 下一档锁梯级: 档 + 1 });
+		return new Response(JSON.stringify({ error: '密码错误' }), { status: 401, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
+	}
+	if (typeof env.KV.get === 'function') {
+		const raw = await env.KV.get(key);
+		if (raw) {
+			const o = JSON.parse(raw);
+			档 = 登录退避_解析下一档锁梯级(o);
+		}
+	}
+	const ms = 登录退避_计算锁定时长毫秒(档);
+	const ttl = Math.min(Math.ceil(ms / 1000) + 120, 86400);
+	const 新记录 = { 锁定且直到: now + ms, 下一档锁梯级: 档 + 1 };
+	await env.KV.put(key, JSON.stringify(新记录), { expirationTtl: ttl });
+	登录退避_记一次KV写();
+	return new Response(JSON.stringify({ error: '密码错误' }), { status: 401, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 }
 
 function 掩码敏感信息(文本, 前缀长度 = 3, 后缀长度 = 2) {
