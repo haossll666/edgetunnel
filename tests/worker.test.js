@@ -168,7 +168,7 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		const m = createKvMock({ 'ADD.txt': '198.51.100.1:443\n198.51.100.2:8443' });
 		const 策略 = await 选择反代策略({ KV: m.kv });
 		assert.equal(策略.来源, 'kv.ADD.txt');
-		assert.equal(策略.反代IP, '198.51.100.1:443,198.51.100.2:8443');
+		assert.deepEqual(new Set(策略.反代IP.split(',')), new Set(['198.51.100.1:443', '198.51.100.2:8443']));
 		assert.equal(策略.启用反代兜底, false);
 		assert.deepEqual(m.getCalls, ['ADD.txt']);
 	});
@@ -180,6 +180,33 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		assert.equal(策略.来源, 'disabled');
 		assert.equal(策略.反代IP, '');
 		assert.equal(策略.启用反代兜底, false);
+	});
+
+	await t.test('should dedupe and cap automatic pool size deterministically', async () => {
+		清理自动反代池缓存();
+		const m = createKvMock({
+			'ADD.txt': '198.51.100.1:443\n198.51.100.2:443\n198.51.100.2:443\n198.51.100.3:443\n198.51.100.4:443'
+		});
+		const env = { KV: m.kv, AUTO_PROXY_POOL_SIZE: '3' };
+		const a = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
+		const b = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
+		const 池A = a.反代IP.split(',');
+		const 池B = b.反代IP.split(',');
+		assert.equal(池A.length, 3);
+		assert.deepEqual(池A, 池B);
+		assert.equal(new Set(池A).size, 3);
+	});
+
+	await t.test('should vary automatic pool ordering when seed changes', async () => {
+		清理自动反代池缓存();
+		const m = createKvMock({
+			'ADD.txt': '198.51.100.1:443\n198.51.100.2:443\n198.51.100.3:443\n198.51.100.4:443'
+		});
+		const env = { KV: m.kv, AUTO_PROXY_POOL_SIZE: '4' };
+		const hkg = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
+		清理自动反代池缓存();
+		const lax = await 选择反代策略(env, { host: 'example.com', colo: 'LAX' });
+		assert.notEqual(hkg.反代IP, lax.反代IP);
 	});
 });
 

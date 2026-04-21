@@ -40,7 +40,7 @@ export default {
 		const host = hosts[0];
 		const 访问路径 = url.pathname.slice(1).toLowerCase();
 		调试日志打印 = ['1', 'true'].includes(env.DEBUG) || 调试日志打印;
-		const 反代策略 = await 选择反代策略(env);
+		const 反代策略 = await 选择反代策略(env, { host, colo: request.cf?.colo || '' });
 		反代IP = 反代策略.反代IP;
 		启用反代兜底 = 反代策略.启用反代兜底;
 		const 访问IP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Real-IP') || request.headers.get('X-Forwarded-For') || request.headers.get('True-Client-IP') || request.headers.get('Fly-Client-IP') || request.headers.get('X-Appengine-Remote-Addr') || request.headers.get('X-Cluster-Client-IP') || request.cf?.clientTcpRtt || '未知IP';
@@ -3372,7 +3372,18 @@ function 清理自动反代池缓存() {
 	自动反代池缓存.clear();
 }
 
-async function 选择反代策略(env = {}) {
+function 规范化自动反代候选(候选列表 = [], 上限 = 8, 种子文本 = '') {
+	const 唯一候选 = [...new Set(候选列表.map(ip => ip.trim()).filter(Boolean))];
+	if (唯一候选.length <= 1) return 唯一候选;
+	let 随机种子 = [...种子文本].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) || 1;
+	const 打散后候选 = [...唯一候选].sort(() => {
+		随机种子 = (随机种子 * 1103515245 + 12345) & 0x7fffffff;
+		return (随机种子 / 0x7fffffff) - 0.5;
+	});
+	return 打散后候选.slice(0, Math.max(1, 上限));
+}
+
+async function 选择反代策略(env = {}, 上下文 = {}) {
 	if (env.PROXYIP) {
 		const proxyIPs = (await 整理成数组(env.PROXYIP)).map(ip => ip.trim()).filter(Boolean);
 		if (proxyIPs.length > 0) {
@@ -3384,7 +3395,9 @@ async function 选择反代策略(env = {}) {
 		}
 	}
 
-	const 自动池缓存键 = env.KV ? 'kv:add.txt' : 'no-kv';
+	const 自动池上限 = Math.min(16, Math.max(1, Number.parseInt(env.AUTO_PROXY_POOL_SIZE || '8', 10) || 8));
+	const 自动池种子 = `${上下文.host || ''}|${上下文.colo || ''}|${env.AUTO_PROXY_POOL_SIZE || ''}`;
+	const 自动池缓存键 = env.KV ? `kv:add.txt:${自动池种子}:${自动池上限}` : `no-kv:${自动池上限}`;
 	const 缓存项 = 自动反代池缓存.get(自动池缓存键);
 	if (缓存项 && 缓存项.过期时间 > Date.now()) {
 		return { ...缓存项.策略 };
@@ -3402,8 +3415,9 @@ async function 选择反代策略(env = {}) {
 	const 自动候选数组 = 自动候选文本
 		? (await 整理成数组(自动候选文本)).map(ip => ip.trim()).filter(Boolean)
 		: [];
-	const 策略 = 自动候选数组.length > 0
-		? { 反代IP: 自动候选数组.join(','), 启用反代兜底: false, 来源: 'kv.ADD.txt' }
+	const 自动反代池 = 规范化自动反代候选(自动候选数组, 自动池上限, 自动池种子);
+	const 策略 = 自动反代池.length > 0
+		? { 反代IP: 自动反代池.join(','), 启用反代兜底: false, 来源: 'kv.ADD.txt' }
 		: { 反代IP: '', 启用反代兜底: false, 来源: 'disabled' };
 
 	自动反代池缓存.set(自动池缓存键, {
