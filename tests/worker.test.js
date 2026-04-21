@@ -225,13 +225,13 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		const beforePool = before.反代IP.split(',');
 		const winner = beforePool[3];
 		const loser = beforePool[0];
-		记录自动反代健康结果(winner, true);
-		记录自动反代健康结果(winner, true);
-		记录自动反代健康结果(loser, false);
-		记录自动反代健康结果(loser, false);
-		assert.equal(读取自动反代健康分(winner), 3);
-		assert.equal(读取自动反代健康分(loser), -4);
-		const after = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
+		记录自动反代健康结果(winner, true, 'target.example.com');
+		记录自动反代健康结果(winner, true, 'target.example.com');
+		记录自动反代健康结果(loser, false, 'target.example.com');
+		记录自动反代健康结果(loser, false, 'target.example.com');
+		assert.equal(读取自动反代健康分(winner, 'target.example.com'), 3);
+		assert.equal(读取自动反代健康分(loser, 'target.example.com'), -4);
+		const after = await 选择反代策略(env, { host: 'example.com', colo: 'HKG', 目标站点: 'target.example.com' });
 		const afterPool = after.反代IP.split(',');
 		assert.equal(afterPool[0], winner);
 		assert.equal(afterPool[afterPool.length - 1], loser);
@@ -244,10 +244,10 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 			'ADD.txt': '198.51.100.1:443\n198.51.100.2:443\n198.51.100.3:443'
 		});
 		const env = { KV: m.kv, AUTO_PROXY_POOL_SIZE: '3' };
-		const first = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
+		const first = await 选择反代策略(env, { host: 'example.com', colo: 'HKG', 目标站点: 'target.example.com' });
 		const firstPool = first.反代IP.split(',');
-		记录自动反代健康结果(firstPool[2], true);
-		const second = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
+		记录自动反代健康结果(firstPool[2], true, 'target.example.com');
+		const second = await 选择反代策略(env, { host: 'example.com', colo: 'HKG', 目标站点: 'target.example.com' });
 		assert.equal(second.反代IP.split(',')[0], firstPool[2]);
 		assert.deepEqual(m.getCalls, ['ADD.txt']);
 	});
@@ -258,16 +258,16 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		const originalNow = Date.now;
 		try {
 			Date.now = () => 1_000_000;
-			记录自动反代健康结果('198.51.100.9:443', true);
-			记录自动反代健康结果('198.51.100.8:443', false);
-			assert.equal(读取自动反代健康分('198.51.100.9:443'), 2);
-			assert.equal(读取自动反代健康分('198.51.100.8:443'), -3);
+			记录自动反代健康结果('198.51.100.9:443', true, 'target.example.com');
+			记录自动反代健康结果('198.51.100.8:443', false, 'target.example.com');
+			assert.equal(读取自动反代健康分('198.51.100.9:443', 'target.example.com'), 2);
+			assert.equal(读取自动反代健康分('198.51.100.8:443', 'target.example.com'), -3);
 			Date.now = () => 1_000_000 + 2 * 60 * 1000;
-			assert.equal(读取自动反代健康分('198.51.100.9:443'), 1);
-			assert.equal(读取自动反代健康分('198.51.100.8:443'), -2);
+			assert.equal(读取自动反代健康分('198.51.100.9:443', 'target.example.com'), 1);
+			assert.equal(读取自动反代健康分('198.51.100.8:443', 'target.example.com'), -2);
 			Date.now = () => 1_000_000 + 8 * 60 * 1000;
-			assert.equal(读取自动反代健康分('198.51.100.9:443'), 0);
-			assert.equal(读取自动反代健康分('198.51.100.8:443'), 0);
+			assert.equal(读取自动反代健康分('198.51.100.9:443', 'target.example.com'), 0);
+			assert.equal(读取自动反代健康分('198.51.100.8:443', 'target.example.com'), 0);
 		} finally {
 			Date.now = originalNow;
 		}
@@ -279,20 +279,40 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		const originalNow = Date.now;
 		try {
 			Date.now = () => 2_000_000;
-			记录自动反代健康结果('198.51.100.7:443', true);
-			assert.equal(读取自动反代健康分('198.51.100.7:443'), 2);
+			记录自动反代健康结果('198.51.100.7:443', true, 'target.example.com');
+			assert.equal(读取自动反代健康分('198.51.100.7:443', 'target.example.com'), 2);
 			Date.now = () => 2_000_000 + 10_000;
-			记录自动反代健康结果('198.51.100.7:443', true);
-			assert.equal(读取自动反代健康分('198.51.100.7:443'), 3);
+			记录自动反代健康结果('198.51.100.7:443', true, 'target.example.com');
+			assert.equal(读取自动反代健康分('198.51.100.7:443', 'target.example.com'), 3);
 			Date.now = () => 2_000_000 + 15_000;
-			记录自动反代健康结果('198.51.100.6:443', false);
-			assert.equal(读取自动反代健康分('198.51.100.6:443'), -3);
+			记录自动反代健康结果('198.51.100.6:443', false, 'target.example.com');
+			assert.equal(读取自动反代健康分('198.51.100.6:443', 'target.example.com'), -3);
 			Date.now = () => 2_000_000 + 20_000;
-			记录自动反代健康结果('198.51.100.6:443', false);
-			assert.equal(读取自动反代健康分('198.51.100.6:443'), -4);
+			记录自动反代健康结果('198.51.100.6:443', false, 'target.example.com');
+			assert.equal(读取自动反代健康分('198.51.100.6:443', 'target.example.com'), -4);
 		} finally {
 			Date.now = originalNow;
 		}
+	});
+
+	await t.test('should isolate health scores by target site', async () => {
+		清理自动反代池缓存();
+		清理自动反代健康缓存();
+		const m = createKvMock({
+			'ADD.txt': '198.51.100.1:443\n198.51.100.2:443\n198.51.100.3:443'
+		});
+		const env = { KV: m.kv, AUTO_PROXY_POOL_SIZE: '3' };
+		const baseA = await 选择反代策略(env, { host: 'example.com', colo: 'HKG', 目标站点: 'alpha.example.com' });
+		const baseB = await 选择反代策略(env, { host: 'example.com', colo: 'HKG', 目标站点: 'beta.example.com' });
+		const alphaWinner = baseA.反代IP.split(',')[2];
+		记录自动反代健康结果(alphaWinner, true, 'alpha.example.com');
+		记录自动反代健康结果(alphaWinner, true, 'alpha.example.com');
+		const alphaAfter = await 选择反代策略(env, { host: 'example.com', colo: 'HKG', 目标站点: 'alpha.example.com' });
+		const betaAfter = await 选择反代策略(env, { host: 'example.com', colo: 'HKG', 目标站点: 'beta.example.com' });
+		assert.equal(alphaAfter.反代IP.split(',')[0], alphaWinner);
+		assert.equal(betaAfter.反代IP, baseB.反代IP);
+		assert.equal(读取自动反代健康分(alphaWinner, 'alpha.example.com'), 3);
+		assert.equal(读取自动反代健康分(alphaWinner, 'beta.example.com'), 0);
 	});
 });
 

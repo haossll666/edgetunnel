@@ -6,6 +6,7 @@ const WorkerGitDescribe = 'GIT_DESCRIBE_NOT_SET';
 	'cloudflare\u003asockets';
 let config_JSON, 反代IP = '', 启用SOCKS5反代 = null, 启用SOCKS5全局反代 = false, 我的SOCKS5账号 = '', parsedSocks5Address = {};
 let 缓存反代IP, 缓存反代解析数组, 缓存反代数组索引 = 0, 启用反代兜底 = true, 调试日志打印 = false;
+let 当前自动反代策略 = null;
 const GetSUB日志最近写入缓存 = new Map();
 const 非SUB日志最近写入缓存 = new Map();
 /** C2：登录失败指数退避 — 连续错误次数（1–4 仅内存）；KV 日写熔断（UTC） */
@@ -47,6 +48,9 @@ export default {
 		const 反代策略 = await 选择反代策略(env, { host, colo: request.cf?.colo || '' });
 		反代IP = 反代策略.反代IP;
 		启用反代兜底 = 反代策略.启用反代兜底;
+		当前自动反代策略 = 反代策略.来源 === 'kv.ADD.txt'
+			? { 候选数组: 反代策略.候选数组 || [], 上限: 反代策略.自动池上限 || 8, 基础种子: 反代策略.自动池种子 || '' }
+			: null;
 		const 访问IP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Real-IP') || request.headers.get('X-Forwarded-For') || request.headers.get('True-Client-IP') || request.headers.get('Fly-Client-IP') || request.headers.get('X-Appengine-Remote-Addr') || request.headers.get('X-Cluster-Client-IP') || request.cf?.clientTcpRtt || '未知IP';
 		if (env.GO2SOCKS5) SOCKS5白名单 = await 整理成数组(env.GO2SOCKS5);
 		if (访问路径 === 'version' && url.searchParams.get('uuid') === userID) {// 版本信息接口
@@ -1569,6 +1573,7 @@ async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnW
 	const 连接超时毫秒 = 1000;
 	let 已通过代理发送首包 = false;
 	const 已配置反代链路 = () => Boolean((反代IP && 反代IP.trim()) || 启用SOCKS5反代);
+	const 目标健康站点 = 规范化健康目标站点(host);
 
 	async function 等待连接建立(remoteSock, timeoutMs = 连接超时毫秒) {
 		await Promise.race([
@@ -1593,12 +1598,12 @@ async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnW
 						testWriter.releaseLock();
 					}
 					log(`[反代连接] 成功连接到: ${反代地址}:${反代端口}`);
-					记录自动反代健康结果(`${反代地址}:${反代端口}`, true);
+					记录自动反代健康结果(`${反代地址}:${反代端口}`, true, 目标健康站点);
 					缓存反代数组索引 = 反代数组索引;
 					return remoteSock;
 				} catch (err) {
 					log(`[反代连接] 连接失败: ${反代地址}:${反代端口}, 错误: ${err.message}`);
-					记录自动反代健康结果(`${反代地址}:${反代端口}`, false);
+					记录自动反代健康结果(`${反代地址}:${反代端口}`, false, 目标健康站点);
 					try { remoteSock?.close?.() } catch (e) { }
 					continue;
 				}
@@ -1642,6 +1647,15 @@ async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnW
 				newSocket = await httpConnect(host, portNum, 本次首包数据, true);
 			} else {
 				if (!反代IP) throw new Error('[反代连接] 未配置可用的反代IP池。');
+				if (当前自动反代策略?.候选数组?.length) {
+					const 目标反代池 = 规范化自动反代候选(
+						当前自动反代策略.候选数组,
+						当前自动反代策略.上限,
+						`${当前自动反代策略.基础种子}|target:${目标健康站点}`,
+						目标健康站点,
+					);
+					反代IP = 目标反代池.join(',');
+				}
 				log(`[反代连接] 代理到: ${host}:${portNum}`);
 				const 所有反代数组 = await 解析地址端口(反代IP, host, yourUUID);
 				newSocket = await connectDirect(atob('UFJPWFlJUC50cDEuMDkwMjI3Lnh5eg=='), 1, 本次首包数据, 所有反代数组, 启用反代兜底);
@@ -3382,12 +3396,20 @@ function 清理自动反代健康缓存() {
 	自动反代健康缓存.clear();
 }
 
-function 读取自动反代健康分(候选) {
-	const 健康项 = 自动反代健康缓存.get(候选);
+function 规范化健康目标站点(目标站点 = '') {
+	return String(目标站点 || '').trim().toLowerCase() || '*';
+}
+
+function 自动反代健康键(候选, 目标站点 = '*') {
+	return `${候选}@@${规范化健康目标站点(目标站点)}`;
+}
+
+function 读取自动反代健康分(候选, 目标站点 = '*') {
+	const 健康项 = 自动反代健康缓存.get(自动反代健康键(候选, 目标站点));
 	if (!健康项) return 0;
 	const 当前时间 = Date.now();
 	if (健康项.过期时间 <= 当前时间) {
-		自动反代健康缓存.delete(候选);
+		自动反代健康缓存.delete(自动反代健康键(候选, 目标站点));
 		return 0;
 	}
 	const 经过间隔数 = Math.floor((当前时间 - 健康项.最近更新时间) / 自动反代健康衰减间隔毫秒);
@@ -3396,7 +3418,7 @@ function 读取自动反代健康分(候选) {
 		? Math.max(0, 健康项.分数 - 经过间隔数)
 		: Math.min(0, 健康项.分数 + 经过间隔数);
 	if (衰减后分数 === 0) {
-		自动反代健康缓存.delete(候选);
+		自动反代健康缓存.delete(自动反代健康键(候选, 目标站点));
 		return 0;
 	}
 	健康项.分数 = 衰减后分数;
@@ -3404,11 +3426,12 @@ function 读取自动反代健康分(候选) {
 	return 健康项.分数;
 }
 
-function 记录自动反代健康结果(候选, 是否成功) {
+function 记录自动反代健康结果(候选, 是否成功, 目标站点 = '*') {
 	if (!候选) return;
 	const 当前时间 = Date.now();
-	const 健康项 = 自动反代健康缓存.get(候选);
-	const 当前分数 = 读取自动反代健康分(候选);
+	const 健康键 = 自动反代健康键(候选, 目标站点);
+	const 健康项 = 自动反代健康缓存.get(健康键);
+	const 当前分数 = 读取自动反代健康分(候选, 目标站点);
 	const 是否同向冷却中 = 健康项
 		&& 健康项.最近结果 === (是否成功 ? 'success' : 'failure')
 		&& (当前时间 - 健康项.最近结果时间) < 自动反代健康冷却毫秒;
@@ -3418,7 +3441,7 @@ function 记录自动反代健康结果(候选, 是否成功) {
 	const 下一个分数 = 是否成功
 		? Math.min(6, 当前分数 + 调整值)
 		: Math.max(-9, 当前分数 + 调整值);
-	自动反代健康缓存.set(候选, {
+	自动反代健康缓存.set(健康键, {
 		分数: 下一个分数,
 		最近更新时间: 当前时间,
 		最近结果: 是否成功 ? 'success' : 'failure',
@@ -3427,7 +3450,7 @@ function 记录自动反代健康结果(候选, 是否成功) {
 	});
 }
 
-function 规范化自动反代候选(候选列表 = [], 上限 = 8, 种子文本 = '') {
+function 规范化自动反代候选(候选列表 = [], 上限 = 8, 种子文本 = '', 目标站点 = '*') {
 	const 唯一候选 = [...new Set(候选列表.map(ip => ip.trim()).filter(Boolean))];
 	if (唯一候选.length <= 1) return 唯一候选;
 	let 随机种子 = [...种子文本].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) || 1;
@@ -3436,7 +3459,7 @@ function 规范化自动反代候选(候选列表 = [], 上限 = 8, 种子文本
 		return (随机种子 / 0x7fffffff) - 0.5;
 	});
 	const 健康排序后候选 = 打散后候选
-		.map((候选, 索引) => ({ 候选, 索引, 健康分: 读取自动反代健康分(候选) }))
+		.map((候选, 索引) => ({ 候选, 索引, 健康分: 读取自动反代健康分(候选, 目标站点) }))
 		.sort((a, b) => b.健康分 - a.健康分 || a.索引 - b.索引)
 		.map(item => item.候选);
 	return 健康排序后候选.slice(0, Math.max(1, 上限));
@@ -3459,9 +3482,9 @@ async function 选择反代策略(env = {}, 上下文 = {}) {
 	const 自动池缓存键 = env.KV ? `kv:add.txt:${自动池种子}` : 'no-kv';
 	const 缓存项 = 自动反代池缓存.get(自动池缓存键);
 	if (缓存项 && 缓存项.过期时间 > Date.now()) {
-		const 自动反代池 = 规范化自动反代候选(缓存项.候选数组, 自动池上限, 自动池种子);
+		const 自动反代池 = 规范化自动反代候选(缓存项.候选数组, 自动池上限, 自动池种子, 上下文.目标站点 || '*');
 		return 自动反代池.length > 0
-			? { 反代IP: 自动反代池.join(','), 启用反代兜底: false, 来源: 'kv.ADD.txt' }
+			? { 反代IP: 自动反代池.join(','), 启用反代兜底: false, 来源: 'kv.ADD.txt', 候选数组: 缓存项.候选数组, 自动池上限, 自动池种子 }
 			: { 反代IP: '', 启用反代兜底: false, 来源: 'disabled' };
 	}
 
@@ -3477,9 +3500,9 @@ async function 选择反代策略(env = {}, 上下文 = {}) {
 	const 自动候选数组 = 自动候选文本
 		? (await 整理成数组(自动候选文本)).map(ip => ip.trim()).filter(Boolean)
 		: [];
-	const 自动反代池 = 规范化自动反代候选(自动候选数组, 自动池上限, 自动池种子);
+	const 自动反代池 = 规范化自动反代候选(自动候选数组, 自动池上限, 自动池种子, 上下文.目标站点 || '*');
 	const 策略 = 自动反代池.length > 0
-		? { 反代IP: 自动反代池.join(','), 启用反代兜底: false, 来源: 'kv.ADD.txt' }
+		? { 反代IP: 自动反代池.join(','), 启用反代兜底: false, 来源: 'kv.ADD.txt', 候选数组: 自动候选数组, 自动池上限, 自动池种子 }
 		: { 反代IP: '', 启用反代兜底: false, 来源: 'disabled' };
 
 	自动反代池缓存.set(自动池缓存键, {
