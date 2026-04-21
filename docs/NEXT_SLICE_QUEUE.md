@@ -20,7 +20,7 @@ Goal：见 `docs/brainstorms/edgetunnel-improvement-directions-20260417-requirem
 
 ### S1-5 — A5 本地自动反代池替代公共默认兜底
 
-Status: Done — `_worker.js` 新增 `选择反代策略()`；优先 `PROXYIP`，其次 `KV/ADD.txt` 自动池；未配置时不再默认回退 `cmliussss` 公共域名，并对自动池做去重、限长、按 `host/colo` 稳定打散，叠加基于真实连接结果的被动健康分短时重排、随时间向 0 温和衰减、同向结果短冷却、按目标站点维度隔离健康分，并且只对自动池候选记录健康分；自动池入口还会默认过滤异常格式和非常见端口。
+Status: Done — `_worker.js` 新增 `选择反代策略()`；优先 `PROXYIP`，其次 `KV/ADD.txt` 自动池；未配置时不再默认回退 `cmliussss` 公共域名，并对自动池做去重、限长、按 `host/colo` 稳定打散，叠加基于真实连接结果的被动健康分短时重排、随时间向 0 温和衰减、同向结果短冷却、按目标站点维度隔离健康分，并且只对自动池候选记录健康分；自动池入口会默认过滤异常格式和非常见端口，并在 `/admin/diagnostics` 暴露聚合过滤诊断。
 
 ### S1-4 — E3 构建 tag / git describe 可见性
 

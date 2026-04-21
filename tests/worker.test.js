@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选 } from '../_worker.js';
+import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断 } from '../_worker.js';
 import { createKvMock } from './_kv-mock.mjs';
 
 test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
@@ -345,19 +345,30 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 });
 
 test('过滤自动反代候选 (Automatic Proxy Candidate Filter)', () => {
-	assert.deepEqual(
-		过滤自动反代候选([
-			'198.51.100.1:443#primary',
-			'example.com:8443',
-			'[2606:4700::1111]:2053',
-			'198.51.100.2:9999',
-			'bad host:443',
-			'198.51.100.999:443',
-			'198.51.100.3',
-			''
-		]),
-		['198.51.100.1:443', 'example.com:8443', '[2606:4700::1111]:2053']
-	);
+	const 结果 = 过滤自动反代候选([
+		'198.51.100.1:443#primary',
+		'example.com:8443',
+		'[2606:4700::1111]:2053',
+		'198.51.100.2:9999',
+		'bad host:443',
+		'198.51.100.999:443',
+		'198.51.100.3',
+		''
+	]);
+	const 诊断 = 读取自动反代过滤诊断();
+	assert.deepEqual(结果, ['198.51.100.1:443', 'example.com:8443', '[2606:4700::1111]:2053']);
+	assert.deepEqual(诊断, {
+		updatedAt: 诊断.updatedAt,
+		totalCandidates: 8,
+		acceptedCandidates: 3,
+		filteredCandidates: 5,
+		reasons: {
+			empty: 1,
+			malformed: 1,
+			disallowed_port: 1,
+			invalid_host: 2,
+		},
+	});
 });
 
 test('读取config_JSON contract split (Base Config / Admin Extensions)', async (t) => {
@@ -589,6 +600,11 @@ test('读取CF配置 cache (CF Config KV Cache)', async (t) => {
 
 test('生成管理诊断视图 (Admin Diagnostics View)', async (t) => {
 	await t.test('should expose recovery routes without secrets', () => {
+		过滤自动反代候选([
+			'198.51.100.1:443',
+			'203.0.113.2:22',
+			'bad host:443',
+		]);
 		const view = 生成管理诊断视图(new URL('https://example.com/admin/diagnostics'), {
 			LINK: 'vless://stable-entry',
 			优选订阅生成: { SUBUpdateTime: 3 },
@@ -599,6 +615,11 @@ test('生成管理诊断视图 (Admin Diagnostics View)', async (t) => {
 		assert.equal(view.subscription.stableFirstEntry, true);
 		assert.equal(view.subscription.updateHours, 3);
 		assert.equal(view.logging.offLog, true);
+		assert.equal(view.autoProxyPool.filtering.totalCandidates, 3);
+		assert.equal(view.autoProxyPool.filtering.acceptedCandidates, 1);
+		assert.equal(view.autoProxyPool.filtering.filteredCandidates, 2);
+		assert.deepEqual(view.autoProxyPool.filtering.reasons, { disallowed_port: 1, invalid_host: 1 });
+		assert.equal(view.autoProxyPool.filtering.rawCandidates, undefined);
 		assert.ok(Array.isArray(view.recovery));
 		assert.equal(view.recovery[0], '先确认 /admin 可打开');
 		assert.equal(typeof view.build.gitDescribe, 'string');
