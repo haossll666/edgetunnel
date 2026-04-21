@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分 } from '../_worker.js';
+import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果 } from '../_worker.js';
 import { createKvMock } from './_kv-mock.mjs';
 
 test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
@@ -313,6 +313,19 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		assert.equal(betaAfter.反代IP, baseB.反代IP);
 		assert.equal(读取自动反代健康分(alphaWinner, 'alpha.example.com'), 3);
 		assert.equal(读取自动反代健康分(alphaWinner, 'beta.example.com'), 0);
+	});
+
+	await t.test('should only record health for automatic pool candidates', () => {
+		清理自动反代健康缓存();
+		设置自动反代策略测试状态({
+			候选集合: new Set(['198.51.100.1:443', '198.51.100.2:443'])
+		});
+		assert.equal(是否允许记录自动反代健康结果('198.51.100.1:443'), true);
+		assert.equal(是否允许记录自动反代健康结果('203.0.113.10:8443'), false);
+		记录自动反代健康结果('198.51.100.1:443', true, 'target.example.com');
+		assert.equal(读取自动反代健康分('198.51.100.1:443', 'target.example.com'), 2);
+		设置自动反代策略测试状态(null);
+		assert.equal(是否允许记录自动反代健康结果('198.51.100.1:443'), false);
 	});
 });
 

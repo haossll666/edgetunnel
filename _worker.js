@@ -26,7 +26,7 @@ const 自动反代健康冷却毫秒 = 30 * 1000;
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
-export { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分 };
+export { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果 };
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
@@ -49,7 +49,12 @@ export default {
 		反代IP = 反代策略.反代IP;
 		启用反代兜底 = 反代策略.启用反代兜底;
 		当前自动反代策略 = 反代策略.来源 === 'kv.ADD.txt'
-			? { 候选数组: 反代策略.候选数组 || [], 上限: 反代策略.自动池上限 || 8, 基础种子: 反代策略.自动池种子 || '' }
+			? {
+				候选数组: 反代策略.候选数组 || [],
+				候选集合: new Set((反代策略.候选数组 || []).map(ip => ip.trim()).filter(Boolean)),
+				上限: 反代策略.自动池上限 || 8,
+				基础种子: 反代策略.自动池种子 || ''
+			}
 			: null;
 		const 访问IP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Real-IP') || request.headers.get('X-Forwarded-For') || request.headers.get('True-Client-IP') || request.headers.get('Fly-Client-IP') || request.headers.get('X-Appengine-Remote-Addr') || request.headers.get('X-Cluster-Client-IP') || request.cf?.clientTcpRtt || '未知IP';
 		if (env.GO2SOCKS5) SOCKS5白名单 = await 整理成数组(env.GO2SOCKS5);
@@ -1598,12 +1603,18 @@ async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnW
 						testWriter.releaseLock();
 					}
 					log(`[反代连接] 成功连接到: ${反代地址}:${反代端口}`);
-					记录自动反代健康结果(`${反代地址}:${反代端口}`, true, 目标健康站点);
+					const 候选键 = `${反代地址}:${反代端口}`;
+					if (是否允许记录自动反代健康结果(候选键)) {
+						记录自动反代健康结果(候选键, true, 目标健康站点);
+					}
 					缓存反代数组索引 = 反代数组索引;
 					return remoteSock;
 				} catch (err) {
 					log(`[反代连接] 连接失败: ${反代地址}:${反代端口}, 错误: ${err.message}`);
-					记录自动反代健康结果(`${反代地址}:${反代端口}`, false, 目标健康站点);
+					const 候选键 = `${反代地址}:${反代端口}`;
+					if (是否允许记录自动反代健康结果(候选键)) {
+						记录自动反代健康结果(候选键, false, 目标健康站点);
+					}
 					try { remoteSock?.close?.() } catch (e) { }
 					continue;
 				}
@@ -3402,6 +3413,15 @@ function 规范化健康目标站点(目标站点 = '') {
 
 function 自动反代健康键(候选, 目标站点 = '*') {
 	return `${候选}@@${规范化健康目标站点(目标站点)}`;
+}
+
+function 设置自动反代策略测试状态(策略 = null) {
+	当前自动反代策略 = 策略;
+}
+
+function 是否允许记录自动反代健康结果(候选) {
+	if (!候选 || !当前自动反代策略?.候选集合) return false;
+	return 当前自动反代策略.候选集合.has(候选);
 }
 
 function 读取自动反代健康分(候选, 目标站点 = '*') {
