@@ -25,10 +25,11 @@ const 自动反代健康衰减间隔毫秒 = 2 * 60 * 1000;
 const 自动反代健康冷却毫秒 = 30 * 1000;
 const 自动反代允许端口 = new Set([80, 443, 2052, 2053, 2082, 2083, 2086, 2087, 2095, 2096, 8080, 8443, 8880]);
 let 自动反代过滤诊断 = null;
+let 自动反代最近候选快照 = [];
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
-export { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断 };
+export { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要 };
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
@@ -2021,6 +2022,7 @@ function 生成管理诊断视图(url, config_JSON = {}, env = {}) {
 		},
 		autoProxyPool: {
 			filtering: 读取自动反代过滤诊断(),
+			health: 读取自动反代健康摘要(),
 		},
 		recovery: [
 			'先确认 /admin 可打开',
@@ -3428,6 +3430,42 @@ function 读取自动反代过滤诊断() {
 	return 自动反代过滤诊断 ? JSON.parse(JSON.stringify(自动反代过滤诊断)) : null;
 }
 
+function 读取自动反代健康摘要() {
+	const 当前时间 = Date.now();
+	const 候选集合 = new Set(自动反代最近候选快照);
+	if (候选集合.size === 0) {
+		return {
+			recentHealthyCandidates: 0,
+			recentUnhealthyCandidates: 0,
+			topScoreBand: 'none',
+			healthStatus: 'unknown',
+		};
+	}
+	const 每候选最佳分数 = new Map();
+	for (const [键, 健康项] of 自动反代健康缓存.entries()) {
+		if (健康项.过期时间 <= 当前时间) continue;
+		const [候选] = 键.split('@@');
+		if (!候选集合.has(候选)) continue;
+		const 当前分数 = 读取自动反代健康分(候选, 键.slice(键.indexOf('@@') + 2));
+		const 已有分数 = 每候选最佳分数.get(候选);
+		if (已有分数 === undefined || 当前分数 > 已有分数) 每候选最佳分数.set(候选, 当前分数);
+	}
+	let recentHealthyCandidates = 0;
+	let recentUnhealthyCandidates = 0;
+	let 最高分 = 0;
+	for (const 候选 of 候选集合) {
+		const 分数 = 每候选最佳分数.get(候选) || 0;
+		if (分数 > 0) recentHealthyCandidates++;
+		if (分数 < 0) recentUnhealthyCandidates++;
+		if (分数 > 最高分) 最高分 = 分数;
+	}
+	const topScoreBand = 最高分 >= 5 ? 'hot' : (最高分 >= 3 ? 'warm' : (最高分 >= 1 ? 'cool' : 'none'));
+	const healthStatus = recentHealthyCandidates > 0
+		? (recentUnhealthyCandidates > recentHealthyCandidates ? 'degraded' : 'stable')
+		: (recentUnhealthyCandidates > 0 ? 'degraded' : 'unknown');
+	return { recentHealthyCandidates, recentUnhealthyCandidates, topScoreBand, healthStatus };
+}
+
 function 过滤自动反代候选(候选列表 = []) {
 	const IPv4正则 = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/;
 	const 域名正则 = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])$/i;
@@ -3596,6 +3634,7 @@ async function 选择反代策略(env = {}, 上下文 = {}) {
 		: [];
 	const 安全自动候选数组 = 过滤自动反代候选(自动候选数组);
 	const 自动反代池 = 规范化自动反代候选(安全自动候选数组, 自动池上限, 自动池种子, 上下文.目标站点 || '*');
+	自动反代最近候选快照 = [...安全自动候选数组];
 	if (自动反代过滤诊断) {
 		自动反代过滤诊断.lastPoolSize = 自动反代池.length;
 		自动反代过滤诊断.lastPoolLimit = 自动池上限;
