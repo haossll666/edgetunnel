@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果 } from '../_worker.js';
+import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选 } from '../_worker.js';
 import { createKvMock } from './_kv-mock.mjs';
 
 test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
@@ -175,6 +175,21 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		assert.deepEqual(m.getCalls, ['ADD.txt']);
 	});
 
+	await t.test('should filter malformed or unsafe automatic candidates before pool selection', async () => {
+		清理自动反代池缓存();
+		清理自动反代健康缓存();
+		const m = createKvMock({
+			'ADD.txt': '198.51.100.1:443#ok\nbad-host@:443\n203.0.113.2:22\nexample.com:8443\n[2606:4700::1111]:2053\n198.51.100.999:443'
+		});
+		const 策略 = await 选择反代策略({ KV: m.kv, AUTO_PROXY_POOL_SIZE: '8' }, { host: 'example.com', colo: 'HKG' });
+		assert.equal(策略.来源, 'kv.ADD.txt');
+		assert.deepEqual(new Set(策略.候选数组), new Set([
+			'198.51.100.1:443',
+			'example.com:8443',
+			'[2606:4700::1111]:2053'
+		]));
+	});
+
 	await t.test('should disable proxy fallback when neither PROXYIP nor ADD.txt exists', async () => {
 		清理自动反代池缓存();
 		清理自动反代健康缓存();
@@ -327,6 +342,22 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		设置自动反代策略测试状态(null);
 		assert.equal(是否允许记录自动反代健康结果('198.51.100.1:443'), false);
 	});
+});
+
+test('过滤自动反代候选 (Automatic Proxy Candidate Filter)', () => {
+	assert.deepEqual(
+		过滤自动反代候选([
+			'198.51.100.1:443#primary',
+			'example.com:8443',
+			'[2606:4700::1111]:2053',
+			'198.51.100.2:9999',
+			'bad host:443',
+			'198.51.100.999:443',
+			'198.51.100.3',
+			''
+		]),
+		['198.51.100.1:443', 'example.com:8443', '[2606:4700::1111]:2053']
+	);
 });
 
 test('读取config_JSON contract split (Base Config / Admin Extensions)', async (t) => {
