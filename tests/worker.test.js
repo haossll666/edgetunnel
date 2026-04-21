@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要 } from '../_worker.js';
+import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议 } from '../_worker.js';
 import { createKvMock } from './_kv-mock.mjs';
 
 test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
@@ -393,6 +393,25 @@ test('过滤自动反代候选 (Automatic Proxy Candidate Filter)', () => {
 	});
 });
 
+test('生成自动反代诊断建议 (Automatic Proxy Advice)', () => {
+	assert.match(
+		生成自动反代诊断建议({ status: 'empty', acceptanceRate: 0 }, { healthStatus: 'unknown' }),
+		/优先检查 ADD\.txt 来源质量/
+	);
+	assert.match(
+		生成自动反代诊断建议({ status: 'constrained', acceptanceRate: 33.3 }, { healthStatus: 'unknown' }),
+		/过滤通过率偏低/
+	);
+	assert.match(
+		生成自动反代诊断建议({ status: 'healthy', acceptanceRate: 80 }, { healthStatus: 'degraded' }),
+		/目标站点可达性变差/
+	);
+	assert.match(
+		生成自动反代诊断建议({ status: 'healthy', acceptanceRate: 80 }, { healthStatus: 'stable', topScoreBand: 'warm' }),
+		/近期表现稳定/
+	);
+});
+
 test('读取config_JSON contract split (Base Config / Admin Extensions)', async (t) => {
 	await t.test('should keep base config loading on config.json only', async () => {
 		const m = createKvMock({});
@@ -653,6 +672,7 @@ test('生成管理诊断视图 (Admin Diagnostics View)', async (t) => {
 			topScoreBand: 'none',
 			healthStatus: 'unknown',
 		});
+		assert.match(view.autoProxyPool.advice, /优先检查 ADD\.txt 来源质量/);
 		assert.equal(view.autoProxyPool.filtering.rawCandidates, undefined);
 		assert.ok(Array.isArray(view.recovery));
 		assert.equal(view.recovery[0], '先确认 /admin 可打开');
