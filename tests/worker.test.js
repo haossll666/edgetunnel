@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数 } from '../_worker.js';
+import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存 } from '../_worker.js';
 import { createKvMock } from './_kv-mock.mjs';
 
 test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
@@ -144,6 +144,42 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 		const body = 生成本地Admin页HTML('example.com');
 		assert.match(body, /构建标识/);
 		assert.match(body, /build\.gitDescribe/);
+	});
+});
+
+test('反代策略选择 (ProxyIP Policy)', async (t) => {
+	await t.test('should prefer env.PROXYIP over automatic pool', async () => {
+		清理自动反代池缓存();
+		const { kv } = createKvMock({ 'ADD.txt': '198.51.100.1:443,198.51.100.2:443' });
+		const originalRandom = Math.random;
+		try {
+			Math.random = () => 0.75;
+			const 策略 = await 选择反代策略({ PROXYIP: '203.0.113.10:8443,203.0.113.11:9443', KV: kv });
+			assert.equal(策略.来源, 'env.PROXYIP');
+			assert.equal(策略.反代IP, '203.0.113.11:9443');
+			assert.equal(策略.启用反代兜底, false);
+		} finally {
+			Math.random = originalRandom;
+		}
+	});
+
+	await t.test('should use ADD.txt as automatic proxy pool when PROXYIP is absent', async () => {
+		清理自动反代池缓存();
+		const m = createKvMock({ 'ADD.txt': '198.51.100.1:443\n198.51.100.2:8443' });
+		const 策略 = await 选择反代策略({ KV: m.kv });
+		assert.equal(策略.来源, 'kv.ADD.txt');
+		assert.equal(策略.反代IP, '198.51.100.1:443,198.51.100.2:8443');
+		assert.equal(策略.启用反代兜底, false);
+		assert.deepEqual(m.getCalls, ['ADD.txt']);
+	});
+
+	await t.test('should disable proxy fallback when neither PROXYIP nor ADD.txt exists', async () => {
+		清理自动反代池缓存();
+		const { kv } = createKvMock({});
+		const 策略 = await 选择反代策略({ KV: kv });
+		assert.equal(策略.来源, 'disabled');
+		assert.equal(策略.反代IP, '');
+		assert.equal(策略.启用反代兜底, false);
 	});
 });
 

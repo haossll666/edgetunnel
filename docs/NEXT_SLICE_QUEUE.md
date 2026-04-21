@@ -18,6 +18,10 @@ Goal：见 `docs/brainstorms/edgetunnel-improvement-directions-20260417-requirem
 
 ## Done
 
+### S1-5 — A5 本地自动反代池替代公共默认兜底
+
+Status: Done — `_worker.js` 新增 `选择反代策略()`；优先 `PROXYIP`，其次 `KV/ADD.txt` 自动池；未配置时不再默认回退 `cmliussss` 公共域名。
+
 ### S1-4 — E3 构建 tag / git describe 可见性
 
 Status: Done — `WorkerGitDescribe`、`scripts/stamp-git-describe.mjs`、`.github/workflows/test.yml`、诊断 JSON + 本地 Admin 兜底文案。
