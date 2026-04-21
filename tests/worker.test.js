@@ -229,8 +229,8 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		记录自动反代健康结果(winner, true);
 		记录自动反代健康结果(loser, false);
 		记录自动反代健康结果(loser, false);
-		assert.equal(读取自动反代健康分(winner), 4);
-		assert.equal(读取自动反代健康分(loser), -6);
+		assert.equal(读取自动反代健康分(winner), 3);
+		assert.equal(读取自动反代健康分(loser), -4);
 		const after = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
 		const afterPool = after.反代IP.split(',');
 		assert.equal(afterPool[0], winner);
@@ -250,6 +250,49 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		const second = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
 		assert.equal(second.反代IP.split(',')[0], firstPool[2]);
 		assert.deepEqual(m.getCalls, ['ADD.txt']);
+	});
+
+	await t.test('should decay positive and negative health scores toward zero over time', async () => {
+		清理自动反代池缓存();
+		清理自动反代健康缓存();
+		const originalNow = Date.now;
+		try {
+			Date.now = () => 1_000_000;
+			记录自动反代健康结果('198.51.100.9:443', true);
+			记录自动反代健康结果('198.51.100.8:443', false);
+			assert.equal(读取自动反代健康分('198.51.100.9:443'), 2);
+			assert.equal(读取自动反代健康分('198.51.100.8:443'), -3);
+			Date.now = () => 1_000_000 + 2 * 60 * 1000;
+			assert.equal(读取自动反代健康分('198.51.100.9:443'), 1);
+			assert.equal(读取自动反代健康分('198.51.100.8:443'), -2);
+			Date.now = () => 1_000_000 + 8 * 60 * 1000;
+			assert.equal(读取自动反代健康分('198.51.100.9:443'), 0);
+			assert.equal(读取自动反代健康分('198.51.100.8:443'), 0);
+		} finally {
+			Date.now = originalNow;
+		}
+	});
+
+	await t.test('should cool down repeated same-direction updates', async () => {
+		清理自动反代池缓存();
+		清理自动反代健康缓存();
+		const originalNow = Date.now;
+		try {
+			Date.now = () => 2_000_000;
+			记录自动反代健康结果('198.51.100.7:443', true);
+			assert.equal(读取自动反代健康分('198.51.100.7:443'), 2);
+			Date.now = () => 2_000_000 + 10_000;
+			记录自动反代健康结果('198.51.100.7:443', true);
+			assert.equal(读取自动反代健康分('198.51.100.7:443'), 3);
+			Date.now = () => 2_000_000 + 15_000;
+			记录自动反代健康结果('198.51.100.6:443', false);
+			assert.equal(读取自动反代健康分('198.51.100.6:443'), -3);
+			Date.now = () => 2_000_000 + 20_000;
+			记录自动反代健康结果('198.51.100.6:443', false);
+			assert.equal(读取自动反代健康分('198.51.100.6:443'), -4);
+		} finally {
+			Date.now = originalNow;
+		}
 	});
 });
 

@@ -19,6 +19,9 @@ const CF配置缓存 = new Map();
 const 基础配置缓存 = new Map();
 const 自动反代池缓存 = new Map();
 const 自动反代健康缓存 = new Map();
+const 自动反代健康过期毫秒 = 10 * 60 * 1000;
+const 自动反代健康衰减间隔毫秒 = 2 * 60 * 1000;
+const 自动反代健康冷却毫秒 = 30 * 1000;
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
@@ -3382,22 +3385,45 @@ function 清理自动反代健康缓存() {
 function 读取自动反代健康分(候选) {
 	const 健康项 = 自动反代健康缓存.get(候选);
 	if (!健康项) return 0;
-	if (健康项.过期时间 <= Date.now()) {
+	const 当前时间 = Date.now();
+	if (健康项.过期时间 <= 当前时间) {
 		自动反代健康缓存.delete(候选);
 		return 0;
 	}
+	const 经过间隔数 = Math.floor((当前时间 - 健康项.最近更新时间) / 自动反代健康衰减间隔毫秒);
+	if (经过间隔数 <= 0) return 健康项.分数;
+	const 衰减后分数 = 健康项.分数 > 0
+		? Math.max(0, 健康项.分数 - 经过间隔数)
+		: Math.min(0, 健康项.分数 + 经过间隔数);
+	if (衰减后分数 === 0) {
+		自动反代健康缓存.delete(候选);
+		return 0;
+	}
+	健康项.分数 = 衰减后分数;
+	健康项.最近更新时间 += 经过间隔数 * 自动反代健康衰减间隔毫秒;
 	return 健康项.分数;
 }
 
 function 记录自动反代健康结果(候选, 是否成功) {
 	if (!候选) return;
+	const 当前时间 = Date.now();
+	const 健康项 = 自动反代健康缓存.get(候选);
 	const 当前分数 = 读取自动反代健康分(候选);
+	const 是否同向冷却中 = 健康项
+		&& 健康项.最近结果 === (是否成功 ? 'success' : 'failure')
+		&& (当前时间 - 健康项.最近结果时间) < 自动反代健康冷却毫秒;
+	const 调整值 = 是否成功
+		? (是否同向冷却中 ? 1 : 2)
+		: (是否同向冷却中 ? -1 : -3);
 	const 下一个分数 = 是否成功
-		? Math.min(6, 当前分数 + 2)
-		: Math.max(-9, 当前分数 - 3);
+		? Math.min(6, 当前分数 + 调整值)
+		: Math.max(-9, 当前分数 + 调整值);
 	自动反代健康缓存.set(候选, {
 		分数: 下一个分数,
-		过期时间: Date.now() + 10 * 60 * 1000,
+		最近更新时间: 当前时间,
+		最近结果: 是否成功 ? 'success' : 'failure',
+		最近结果时间: 当前时间,
+		过期时间: 当前时间 + 自动反代健康过期毫秒,
 	});
 }
 
