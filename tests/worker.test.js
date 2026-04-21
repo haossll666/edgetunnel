@@ -362,6 +362,7 @@ test('过滤自动反代候选 (Automatic Proxy Candidate Filter)', () => {
 		totalCandidates: 8,
 		acceptedCandidates: 3,
 		filteredCandidates: 5,
+		acceptanceRate: 37.5,
 		reasons: {
 			empty: 1,
 			malformed: 1,
@@ -599,12 +600,12 @@ test('读取CF配置 cache (CF Config KV Cache)', async (t) => {
 });
 
 test('生成管理诊断视图 (Admin Diagnostics View)', async (t) => {
-	await t.test('should expose recovery routes without secrets', () => {
-		过滤自动反代候选([
-			'198.51.100.1:443',
-			'203.0.113.2:22',
-			'bad host:443',
-		]);
+	await t.test('should expose recovery routes without secrets', async () => {
+		await 选择反代策略({ KV: { get: async () => '198.51.100.1:443\n203.0.113.2:22\nbad host:443' }, AUTO_PROXY_POOL_SIZE: '4' }, {
+			host: 'example.com',
+			colo: 'HKG',
+			目标站点: 'target.example.com'
+		});
 		const view = 生成管理诊断视图(new URL('https://example.com/admin/diagnostics'), {
 			LINK: 'vless://stable-entry',
 			优选订阅生成: { SUBUpdateTime: 3 },
@@ -618,6 +619,10 @@ test('生成管理诊断视图 (Admin Diagnostics View)', async (t) => {
 		assert.equal(view.autoProxyPool.filtering.totalCandidates, 3);
 		assert.equal(view.autoProxyPool.filtering.acceptedCandidates, 1);
 		assert.equal(view.autoProxyPool.filtering.filteredCandidates, 2);
+		assert.equal(view.autoProxyPool.filtering.acceptanceRate, 33.3);
+		assert.equal(view.autoProxyPool.filtering.lastPoolSize, 1);
+		assert.equal(view.autoProxyPool.filtering.lastPoolLimit, 4);
+		assert.equal(view.autoProxyPool.filtering.status, 'constrained');
 		assert.deepEqual(view.autoProxyPool.filtering.reasons, { disallowed_port: 1, invalid_host: 1 });
 		assert.equal(view.autoProxyPool.filtering.rawCandidates, undefined);
 		assert.ok(Array.isArray(view.recovery));

@@ -3481,11 +3481,13 @@ function 过滤自动反代候选(候选列表 = []) {
 		过滤后候选.push(`${规范地址}:${规范端口}`);
 	}
 	const 过滤总数 = Object.values(原因计数).reduce((sum, count) => sum + count, 0);
+	const 接受率 = 候选列表.length > 0 ? Number(((过滤后候选.length / 候选列表.length) * 100).toFixed(1)) : null;
 	自动反代过滤诊断 = {
 		updatedAt: new Date().toISOString(),
 		totalCandidates: 候选列表.length,
 		acceptedCandidates: 过滤后候选.length,
 		filteredCandidates: 过滤总数,
+		acceptanceRate: 接受率,
 		reasons: Object.fromEntries(Object.entries(原因计数).filter(([, count]) => count > 0)),
 	};
 	return 过滤后候选;
@@ -3594,6 +3596,13 @@ async function 选择反代策略(env = {}, 上下文 = {}) {
 		: [];
 	const 安全自动候选数组 = 过滤自动反代候选(自动候选数组);
 	const 自动反代池 = 规范化自动反代候选(安全自动候选数组, 自动池上限, 自动池种子, 上下文.目标站点 || '*');
+	if (自动反代过滤诊断) {
+		自动反代过滤诊断.lastPoolSize = 自动反代池.length;
+		自动反代过滤诊断.lastPoolLimit = 自动池上限;
+		自动反代过滤诊断.status = 自动反代池.length === 0
+			? 'empty'
+			: (自动反代池.length < 自动池上限 ? 'constrained' : 'healthy');
+	}
 	const 策略 = 自动反代池.length > 0
 		? { 反代IP: 自动反代池.join(','), 启用反代兜底: false, 来源: 'kv.ADD.txt', 候选数组: 安全自动候选数组, 自动池上限, 自动池种子 }
 		: { 反代IP: '', 启用反代兜底: false, 来源: 'disabled' };
