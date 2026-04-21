@@ -18,10 +18,11 @@ const TG配置缓存 = new Map();
 const CF配置缓存 = new Map();
 const 基础配置缓存 = new Map();
 const 自动反代池缓存 = new Map();
+const 自动反代健康缓存 = new Map();
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
-export { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存 };
+export { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分 };
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
@@ -1589,10 +1590,12 @@ async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnW
 						testWriter.releaseLock();
 					}
 					log(`[反代连接] 成功连接到: ${反代地址}:${反代端口}`);
+					记录自动反代健康结果(`${反代地址}:${反代端口}`, true);
 					缓存反代数组索引 = 反代数组索引;
 					return remoteSock;
 				} catch (err) {
 					log(`[反代连接] 连接失败: ${反代地址}:${反代端口}, 错误: ${err.message}`);
+					记录自动反代健康结果(`${反代地址}:${反代端口}`, false);
 					try { remoteSock?.close?.() } catch (e) { }
 					continue;
 				}
@@ -3372,6 +3375,32 @@ function 清理自动反代池缓存() {
 	自动反代池缓存.clear();
 }
 
+function 清理自动反代健康缓存() {
+	自动反代健康缓存.clear();
+}
+
+function 读取自动反代健康分(候选) {
+	const 健康项 = 自动反代健康缓存.get(候选);
+	if (!健康项) return 0;
+	if (健康项.过期时间 <= Date.now()) {
+		自动反代健康缓存.delete(候选);
+		return 0;
+	}
+	return 健康项.分数;
+}
+
+function 记录自动反代健康结果(候选, 是否成功) {
+	if (!候选) return;
+	const 当前分数 = 读取自动反代健康分(候选);
+	const 下一个分数 = 是否成功
+		? Math.min(6, 当前分数 + 2)
+		: Math.max(-9, 当前分数 - 3);
+	自动反代健康缓存.set(候选, {
+		分数: 下一个分数,
+		过期时间: Date.now() + 10 * 60 * 1000,
+	});
+}
+
 function 规范化自动反代候选(候选列表 = [], 上限 = 8, 种子文本 = '') {
 	const 唯一候选 = [...new Set(候选列表.map(ip => ip.trim()).filter(Boolean))];
 	if (唯一候选.length <= 1) return 唯一候选;
@@ -3380,7 +3409,11 @@ function 规范化自动反代候选(候选列表 = [], 上限 = 8, 种子文本
 		随机种子 = (随机种子 * 1103515245 + 12345) & 0x7fffffff;
 		return (随机种子 / 0x7fffffff) - 0.5;
 	});
-	return 打散后候选.slice(0, Math.max(1, 上限));
+	const 健康排序后候选 = 打散后候选
+		.map((候选, 索引) => ({ 候选, 索引, 健康分: 读取自动反代健康分(候选) }))
+		.sort((a, b) => b.健康分 - a.健康分 || a.索引 - b.索引)
+		.map(item => item.候选);
+	return 健康排序后候选.slice(0, Math.max(1, 上限));
 }
 
 async function 选择反代策略(env = {}, 上下文 = {}) {
@@ -3397,10 +3430,13 @@ async function 选择反代策略(env = {}, 上下文 = {}) {
 
 	const 自动池上限 = Math.min(16, Math.max(1, Number.parseInt(env.AUTO_PROXY_POOL_SIZE || '8', 10) || 8));
 	const 自动池种子 = `${上下文.host || ''}|${上下文.colo || ''}|${env.AUTO_PROXY_POOL_SIZE || ''}`;
-	const 自动池缓存键 = env.KV ? `kv:add.txt:${自动池种子}:${自动池上限}` : `no-kv:${自动池上限}`;
+	const 自动池缓存键 = env.KV ? `kv:add.txt:${自动池种子}` : 'no-kv';
 	const 缓存项 = 自动反代池缓存.get(自动池缓存键);
 	if (缓存项 && 缓存项.过期时间 > Date.now()) {
-		return { ...缓存项.策略 };
+		const 自动反代池 = 规范化自动反代候选(缓存项.候选数组, 自动池上限, 自动池种子);
+		return 自动反代池.length > 0
+			? { 反代IP: 自动反代池.join(','), 启用反代兜底: false, 来源: 'kv.ADD.txt' }
+			: { 反代IP: '', 启用反代兜底: false, 来源: 'disabled' };
 	}
 
 	let 自动候选文本 = '';
@@ -3421,7 +3457,7 @@ async function 选择反代策略(env = {}, 上下文 = {}) {
 		: { 反代IP: '', 启用反代兜底: false, 来源: 'disabled' };
 
 	自动反代池缓存.set(自动池缓存键, {
-		策略,
+		候选数组: 自动候选数组,
 		过期时间: Date.now() + 60 * 1000,
 	});
 	return { ...策略 };

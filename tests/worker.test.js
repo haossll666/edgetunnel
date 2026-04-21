@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存 } from '../_worker.js';
+import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分 } from '../_worker.js';
 import { createKvMock } from './_kv-mock.mjs';
 
 test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
@@ -150,6 +150,7 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 test('反代策略选择 (ProxyIP Policy)', async (t) => {
 	await t.test('should prefer env.PROXYIP over automatic pool', async () => {
 		清理自动反代池缓存();
+		清理自动反代健康缓存();
 		const { kv } = createKvMock({ 'ADD.txt': '198.51.100.1:443,198.51.100.2:443' });
 		const originalRandom = Math.random;
 		try {
@@ -165,6 +166,7 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 
 	await t.test('should use ADD.txt as automatic proxy pool when PROXYIP is absent', async () => {
 		清理自动反代池缓存();
+		清理自动反代健康缓存();
 		const m = createKvMock({ 'ADD.txt': '198.51.100.1:443\n198.51.100.2:8443' });
 		const 策略 = await 选择反代策略({ KV: m.kv });
 		assert.equal(策略.来源, 'kv.ADD.txt');
@@ -175,6 +177,7 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 
 	await t.test('should disable proxy fallback when neither PROXYIP nor ADD.txt exists', async () => {
 		清理自动反代池缓存();
+		清理自动反代健康缓存();
 		const { kv } = createKvMock({});
 		const 策略 = await 选择反代策略({ KV: kv });
 		assert.equal(策略.来源, 'disabled');
@@ -184,6 +187,7 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 
 	await t.test('should dedupe and cap automatic pool size deterministically', async () => {
 		清理自动反代池缓存();
+		清理自动反代健康缓存();
 		const m = createKvMock({
 			'ADD.txt': '198.51.100.1:443\n198.51.100.2:443\n198.51.100.2:443\n198.51.100.3:443\n198.51.100.4:443'
 		});
@@ -199,6 +203,7 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 
 	await t.test('should vary automatic pool ordering when seed changes', async () => {
 		清理自动反代池缓存();
+		清理自动反代健康缓存();
 		const m = createKvMock({
 			'ADD.txt': '198.51.100.1:443\n198.51.100.2:443\n198.51.100.3:443\n198.51.100.4:443'
 		});
@@ -207,6 +212,44 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		清理自动反代池缓存();
 		const lax = await 选择反代策略(env, { host: 'example.com', colo: 'LAX' });
 		assert.notEqual(hkg.反代IP, lax.反代IP);
+	});
+
+	await t.test('should promote healthy candidates and demote failing candidates', async () => {
+		清理自动反代池缓存();
+		清理自动反代健康缓存();
+		const m = createKvMock({
+			'ADD.txt': '198.51.100.1:443\n198.51.100.2:443\n198.51.100.3:443\n198.51.100.4:443'
+		});
+		const env = { KV: m.kv, AUTO_PROXY_POOL_SIZE: '4' };
+		const before = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
+		const beforePool = before.反代IP.split(',');
+		const winner = beforePool[3];
+		const loser = beforePool[0];
+		记录自动反代健康结果(winner, true);
+		记录自动反代健康结果(winner, true);
+		记录自动反代健康结果(loser, false);
+		记录自动反代健康结果(loser, false);
+		assert.equal(读取自动反代健康分(winner), 4);
+		assert.equal(读取自动反代健康分(loser), -6);
+		const after = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
+		const afterPool = after.反代IP.split(',');
+		assert.equal(afterPool[0], winner);
+		assert.equal(afterPool[afterPool.length - 1], loser);
+	});
+
+	await t.test('should apply health ordering even when candidate list is served from cache', async () => {
+		清理自动反代池缓存();
+		清理自动反代健康缓存();
+		const m = createKvMock({
+			'ADD.txt': '198.51.100.1:443\n198.51.100.2:443\n198.51.100.3:443'
+		});
+		const env = { KV: m.kv, AUTO_PROXY_POOL_SIZE: '3' };
+		const first = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
+		const firstPool = first.反代IP.split(',');
+		记录自动反代健康结果(firstPool[2], true);
+		const second = await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
+		assert.equal(second.反代IP.split(',')[0], firstPool[2]);
+		assert.deepEqual(m.getCalls, ['ADD.txt']);
 	});
 });
 
