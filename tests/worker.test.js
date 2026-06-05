@@ -825,3 +825,100 @@ test('清理Cloudflare使用量缓存 (Cloudflare Usage Cache Reset)', async () 
 	assert.equal(usageCache ? usageCache.size : 0, 0);
 	assert.equal(cfUsageCache ? cfUsageCache.size : 0, 0);
 });
+
+test('远程订阅转换默认关闭 (Remote Subconvert Hardening)', async (t) => {
+	const uuid = '90cd4a77-141a-43c9-991b-08263cfe9c10';
+	const tokenFor = async (host) => {
+		const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(host + uuid));
+		return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+	};
+	const makeRequest = async () => {
+		const token = await tokenFor('et.example');
+		const base = new Request(`https://et.example/sub?target=clash&token=${token}`, {
+			headers: { 'User-Agent': 'ClashMeta/1.0', 'CF-Connecting-IP': '198.51.100.40' },
+		});
+		return new Proxy(base, {
+			get(target, prop, receiver) {
+				if (prop === 'cf') return { colo: 'TST', asn: 13335, asOrganization: 'Test ASN', country: 'US', city: 'Testville' };
+				return Reflect.get(target, prop, receiver);
+			},
+		});
+	};
+	const configJson = {
+		UUID: uuid,
+		HOST: 'et.example',
+		协议类型: 'vless',
+		传输协议: 'ws',
+		PATH: '/',
+		随机路径: false,
+		启用0RTT: false,
+		跳过证书验证: false,
+		Fingerprint: 'chrome',
+		优选订阅生成: {
+			local: true,
+			本地IP库: { 随机IP: false, 随机数量: 1, 指定端口: 443 },
+			SUB: null,
+			SUBNAME: 'edge tunnel',
+			SUBUpdateTime: 3,
+			TOKEN: 'placeholder',
+		},
+		订阅转换配置: {
+			SUBAPI: 'https://subapi.example',
+			SUBCONFIG: 'https://config.example/sub.ini',
+			SUBEMOJI: false,
+		},
+		反代: {
+			auto: 'auto',
+			SOCKS5: { 启用: null, 全局: false, 账号: null, 白名单: [] },
+			路径模板: {
+				auto: 'proxyip={{IP:PORT}}',
+				SOCKS5: { 全局: 'socks5://{{IP:PORT}}', 标准: 'socks5={{IP:PORT}}' },
+				HTTP: { 全局: 'http://{{IP:PORT}}', 标准: 'http={{IP:PORT}}' },
+			},
+		},
+		TG: { 启用: false, BotToken: null, ChatID: null },
+		CF: { Usage: { success: false, pages: 0, workers: 0, total: 0, max: 100000 } },
+		SS: { 加密方式: 'aes-128-gcm', TLS: true },
+	};
+
+	await t.test('should not send stable subscription token to SUBAPI by default', async () => {
+		清理基础配置缓存();
+		清理配置缓存();
+		const { kv } = createKvMock({ 'config.json': JSON.stringify(configJson) });
+		const calls = [];
+		const originalFetch = global.fetch;
+		global.fetch = async (input) => {
+			calls.push(String(input));
+			return new Response('proxies: []', { status: 200 });
+		};
+		try {
+			const response = await worker.fetch(await makeRequest(), { KEY: 'k', ADMIN: 'admin', UUID: uuid, KV: kv, OFF_LOG: '1' }, { waitUntil() { } });
+			assert.equal(response.status, 403);
+			assert.equal(calls.length, 0);
+			assert.match(await response.text(), /远程订阅转换默认关闭/);
+		} finally {
+			global.fetch = originalFetch;
+		}
+	});
+
+	await t.test('should preserve remote conversion when explicitly enabled', async () => {
+		清理基础配置缓存();
+		清理配置缓存();
+		const { kv } = createKvMock({ 'config.json': JSON.stringify(configJson) });
+		const calls = [];
+		const originalFetch = global.fetch;
+		global.fetch = async (input) => {
+			calls.push(String(input));
+			return new Response('proxies: []', { status: 200 });
+		};
+		try {
+			const response = await worker.fetch(await makeRequest(), { KEY: 'k', ADMIN: 'admin', UUID: uuid, KV: kv, OFF_LOG: '1', REMOTE_SUBCONVERT: '1' }, { waitUntil() { } });
+			assert.equal(response.status, 200);
+			assert.equal(calls.length, 1);
+			assert.match(calls[0], /^https:\/\/subapi\.example\/sub\?/);
+			assert.match(calls[0], /url=.*token%3D/);
+		} finally {
+			global.fetch = originalFetch;
+		}
+	});
+});
