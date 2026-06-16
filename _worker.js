@@ -49,6 +49,15 @@ async function 处理请求(request, env, ctx) {
 		const UA = request.headers.get('User-Agent') || 'null';
 		const upgradeHeader = (request.headers.get('Upgrade') || '').toLowerCase(), contentType = (request.headers.get('content-type') || '').toLowerCase();
 		if (!env.KEY) {
+			if (request.method === 'GET' && url.pathname.toLowerCase() === '/login') {
+				return new Response(生成本地登录页HTML(url.host), {
+					status: 200,
+					headers: {
+						'Content-Type': 'text/html;charset=utf-8',
+						'Cache-Control': 'no-store',
+					},
+				});
+			}
 			return new Response('Configuration Error: Missing KEY environment variable', { status: 500, headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
 		}
 		const 管理员密码 = env.ADMIN || env.admin || env.PASSWORD || env.password || env.pswd || env.TOKEN || env.KEY || env.UUID || env.uuid;
