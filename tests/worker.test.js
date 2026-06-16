@@ -686,6 +686,19 @@ test('生成管理诊断视图 (Admin Diagnostics View)', async (t) => {
 			topScoreBand: 'none',
 			healthStatus: 'unknown',
 		});
+		assert.equal(view.aiAccess.scope, 'cn-ai-access');
+		assert.equal(view.aiAccess.proxyExit.source, 'kv.ADD.txt');
+		assert.equal(view.aiAccess.proxyExit.configured, true);
+		assert.equal(view.aiAccess.proxyExit.envProxyCount, 0);
+		assert.equal(view.aiAccess.proxyExit.autoPoolAccepted, 1);
+		assert.equal(view.aiAccess.proxyExit.recentExitStatus, 'recent-exit-seen');
+		assert.equal(view.aiAccess.proxyExit.recentTargetSite, 'target.example.com');
+		assert.ok(view.aiAccess.serviceDomains.chatgpt.includes('chatgpt.com'));
+		assert.ok(view.aiAccess.serviceDomains.x.includes('x.com'));
+		assert.ok(view.aiAccess.serviceDomains.claude.includes('claude.ai'));
+		assert.ok(view.aiAccess.serviceDomains.gemini.includes('gemini.google.com'));
+		assert.match(view.aiAccess.dnsAdvice, /国内 DNS/);
+		assert.match(view.aiAccess.nextAction, /客户端分流规则|PROXYIP|出口/);
 		assert.deepEqual(view.proxyExit.lastSuccess, {
 			candidate: '198.51.100.1:443',
 			targetSite: 'target.example.com',

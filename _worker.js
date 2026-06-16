@@ -2016,6 +2016,51 @@ function 生成订阅稳定首项(config_JSON = {}) {
 	return 稳定首项.endsWith('\n') ? 稳定首项 : `${稳定首项}\n`;
 }
 
+async function 生成国内AI可用性诊断(env = {}, 最近命中 = null, 自动池过滤 = null, 自动池健康 = null) {
+	const proxyIPs = env.PROXYIP
+		? (await 整理成数组(env.PROXYIP)).map(ip => ip.trim()).filter(Boolean)
+		: [];
+	const proxySource = proxyIPs.length > 0
+		? 'env.PROXYIP'
+		: ((当前自动反代策略?.候选数组?.length > 0 || (自动池过滤?.acceptedCandidates || 0) > 0) ? 'kv.ADD.txt' : 'disabled');
+	const proxyReady = proxySource !== 'disabled';
+	const exitSeen = Boolean(最近命中?.候选键);
+	const healthStatus = 自动池健康?.healthStatus || 'unknown';
+	const locationStatus = exitSeen ? 'recent-exit-seen' : 'no-recent-exit';
+	const nextAction = !proxyReady
+		? '先配置高信誉 PROXYIP，或在 /admin/ADD.txt 准备可用自动池；AI 服务主要取决于 Worker 出口。'
+		: (!exitSeen
+			? '先用客户端访问 ChatGPT / X / Claude / Gemini 任一服务，刷新最近成功出口；若失败，优先换 PROXYIP。'
+			: (healthStatus === 'degraded'
+				? '自动池最近健康度下降，优先补充或替换 PROXYIP/ADD.txt 候选。'
+				: '出口链路已有最近成功记录；若某个 AI 服务仍不可用，优先检查客户端分流规则和该服务对出口 IP 的风控。'));
+	return {
+		scope: 'cn-ai-access',
+		chain: [
+			'客户端分流规则决定 ChatGPT / X / Claude / Gemini 是否进入代理',
+			'优选 IP 决定客户端到 Cloudflare 边缘的入口质量',
+			'PROXYIP 或 ADD.txt 自动池决定 Worker 到目标服务的出口质量',
+		],
+		serviceDomains: {
+			chatgpt: ['chatgpt.com', 'openai.com', 'oaistatic.com', 'oaiusercontent.com'],
+			x: ['x.com', 'twitter.com', 'twimg.com', 't.co'],
+			claude: ['claude.ai', 'anthropic.com'],
+			gemini: ['gemini.google.com', 'generativelanguage.googleapis.com', 'googleapis.com', 'gstatic.com'],
+		},
+		proxyExit: {
+			source: proxySource,
+			configured: proxyReady,
+			envProxyCount: proxyIPs.length,
+			autoPoolAccepted: 自动池过滤?.acceptedCandidates ?? null,
+			autoPoolHealth: healthStatus,
+			recentExitStatus: locationStatus,
+			recentTargetSite: 最近命中?.目标站点 || null,
+		},
+		dnsAdvice: 'AI 域名不要走国内 DNS 解析结果；若不确定 IPv6 是否进代理，先关闭不受控 IPv6 直连。',
+		nextAction,
+	};
+}
+
 async function 生成管理诊断视图(url, config_JSON = {}, env = {}, { fetchImpl = fetch } = {}) {
 	const 自动池过滤 = 读取自动反代过滤诊断();
 	const 自动池健康 = 读取自动反代健康摘要();
@@ -2044,6 +2089,7 @@ async function 生成管理诊断视图(url, config_JSON = {}, env = {}, { fetch
 			health: 自动池健康,
 			advice: 生成自动反代诊断建议(自动池过滤, 自动池健康),
 		},
+		aiAccess: await 生成国内AI可用性诊断(env, 最近命中, 自动池过滤, 自动池健康),
 		proxyExit: 生成出口地域展示(最近命中, 最近地理信息),
 		recovery: [
 			'先确认 /admin 可打开',
