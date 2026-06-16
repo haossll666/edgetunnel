@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议, 记录最近成功出口命中, 读取最近成功出口命中, 清理出口地理缓存, 读取出口地理缓存项, 读取或刷新出口地理信息, 生成出口地域摘要 } from '../_worker.js';
+import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议, 记录最近成功出口命中, 读取最近成功出口命中, 清理出口地理缓存, 读取出口地理缓存项, 读取或刷新出口地理信息, 生成出口地域摘要, 生成带出口地域的节点备注 } from '../_worker.js';
 import { createKvMock } from './_kv-mock.mjs';
 
 test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
@@ -739,6 +739,111 @@ test('出口地理缓存 (Exit Geo Cache)', async (t) => {
 		const copy = 读取最近成功出口命中();
 		assert.equal(hit.候选键, '203.0.113.11:8443');
 		assert.equal(copy.目标站点, 'alpha.example.com');
+	});
+
+	await t.test('should add cached geo label to subscription node remarks without fetching', async () => {
+		清理出口地理缓存();
+		let fetchCount = 0;
+		await 读取或刷新出口地理信息('203.0.113.12:443', {
+			fetchImpl: async () => {
+				fetchCount += 1;
+				return new Response(JSON.stringify({
+					country_code: 'JP',
+					country_name: 'Japan',
+					region: 'Tokyo',
+					city: 'Tokyo',
+				}), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' },
+				});
+			},
+		});
+
+		const remark = 生成带出口地域的节点备注('CF优选1', '203.0.113.12', '443');
+
+		assert.equal(fetchCount, 1);
+		assert.equal(remark, 'JP Tokyo | CF优选1');
+	});
+
+	await t.test('should keep subscription node remarks unchanged when geo cache is empty', () => {
+		清理出口地理缓存();
+
+		assert.equal(生成带出口地域的节点备注('CF优选1', '203.0.113.13', '443'), 'CF优选1');
+	});
+
+	await t.test('should include cached geo label in locally generated mixed subscription links', async () => {
+		清理基础配置缓存();
+		清理配置缓存();
+		清理出口地理缓存();
+		const uuid = '90cd4a77-141a-43c9-991b-08263cfe9c10';
+		const token = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('et.example' + uuid))))
+			.map(b => b.toString(16).padStart(2, '0'))
+			.join('');
+		await 读取或刷新出口地理信息('203.0.113.12:443', {
+			fetchImpl: async () => new Response(JSON.stringify({
+				country_code: 'JP',
+				country_name: 'Japan',
+				region: 'Tokyo',
+				city: 'Tokyo',
+			}), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			}),
+		});
+		const configJson = {
+			UUID: uuid,
+			HOST: 'et.example',
+			协议类型: 'vless',
+			传输协议: 'ws',
+			PATH: '/',
+			完整节点路径: '/?ed=2560',
+			随机路径: false,
+			启用0RTT: false,
+			跳过证书验证: false,
+			Fingerprint: 'chrome',
+			优选订阅生成: {
+				local: true,
+				本地IP库: { 随机IP: false, 随机数量: 1, 指定端口: 443 },
+				SUB: null,
+				SUBNAME: 'edge tunnel',
+				SUBUpdateTime: 3,
+			},
+			订阅转换配置: {
+				SUBAPI: 'https://subapi.example',
+				SUBCONFIG: 'https://config.example/sub.ini',
+				SUBEMOJI: false,
+			},
+			反代: {
+				auto: 'auto',
+				SOCKS5: { 启用: null, 全局: false, 账号: null, 白名单: [] },
+				路径模板: {
+					auto: 'proxyip={{IP:PORT}}',
+					SOCKS5: { 全局: 'socks5://{{IP:PORT}}', 标准: 'socks5={{IP:PORT}}' },
+					HTTP: { 全局: 'http://{{IP:PORT}}', 标准: 'http={{IP:PORT}}' },
+				},
+			},
+			TG: { 启用: false, BotToken: null, ChatID: null },
+			CF: { Usage: { success: false, pages: 0, workers: 0, total: 0, max: 100000 } },
+			SS: { 加密方式: 'aes-128-gcm', TLS: true },
+		};
+		const { kv } = createKvMock({
+			'config.json': JSON.stringify(configJson),
+			'ADD.txt': '203.0.113.12:443#CF优选1',
+		});
+		const request = new Request(`https://et.example/sub?target=mixed&token=${token}`, {
+			headers: { 'User-Agent': 'Mozilla/5.0', 'CF-Connecting-IP': '198.51.100.40' },
+		});
+		const cfRequest = new Proxy(request, {
+			get(target, prop, receiver) {
+				if (prop === 'cf') return { colo: 'TST', asn: 13335, asOrganization: 'Test ASN', country: 'US', city: 'Testville' };
+				return Reflect.get(target, prop, receiver);
+			},
+		});
+		const response = await worker.fetch(cfRequest, { KEY: 'k', ADMIN: 'admin', UUID: uuid, KV: kv, OFF_LOG: '1' }, { waitUntil() { } });
+		const body = await response.text();
+
+		assert.equal(response.status, 200);
+		assert.match(body, /#JP%20Tokyo%20%7C%20CF%E4%BC%98%E9%80%891/);
 	});
 });
 
