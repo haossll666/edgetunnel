@@ -127,6 +127,15 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 		assert.match(body, /管理员密码/);
 	});
 
+	await t.test('should fall back to local login HTML when Pages returns non-2xx', async () => {
+		const errorFetch = async () => new Response('host error', { status: 522, statusText: 'Connection timed out' });
+		const response = await 获取Pages页面或本地兜底('/login', 生成本地登录页HTML('example.com'), 200, errorFetch);
+		const body = await response.text();
+		assert.equal(response.status, 200);
+		assert.match(body, /<form method="post" action="\/login">/);
+		assert.match(body, /登录后台/);
+	});
+
 	await t.test('should generate route-specific fallback copy for noADMIN and noKV', () => {
 		assert.match(生成本地NoADMIN页HTML('example.com'), /还没有配置 ADMIN/);
 		assert.match(生成本地NoKV页HTML('example.com'), /还没有绑定 KV/);

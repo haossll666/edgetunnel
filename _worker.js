@@ -2826,6 +2826,7 @@ function 是否跳过GetSUB日志KV写入(日志内容) {
 async function 获取Pages页面或本地兜底(路径, 本地HTML, 状态码 = 200, fetchFn = fetch) {
 	try {
 		const response = await fetchFn(Pages静态页面 + 路径);
+		if (!response.ok) throw new Error(`Pages response ${response.status}`);
 		const headers = new Headers(response.headers);
 		headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 		headers.set('Pragma', 'no-cache');
