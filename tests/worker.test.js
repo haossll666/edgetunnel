@@ -1056,6 +1056,22 @@ test('登录入口的前置环境异常应回退到本地页', async (t) => {
 		assert.match(body, /管理员密码/);
 	});
 
+	await t.test('登录页应在 KEY 校验前短路', async () => {
+		const env = {};
+		Object.defineProperty(env, 'KEY', {
+			enumerable: true,
+			configurable: true,
+			get() {
+				throw new Error('key boom');
+			},
+		});
+		const response = await worker.fetch(makeLoginRequest(), env, { waitUntil() { } });
+		assert.equal(response.status, 200);
+		const body = await response.text();
+		assert.match(body, /登录后台/);
+		assert.match(body, /管理员密码/);
+	});
+
 	await t.test('缺少 KEY 时非登录路径仍应返回配置错误', async () => {
 		const response = await worker.fetch(new Request('https://example.com/sub'), {}, { waitUntil() { } });
 		assert.equal(response.status, 500);
