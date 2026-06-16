@@ -4,13 +4,13 @@ const assert = require('assert');
 
 const workerCode = fs.readFileSync(path.join(__dirname, '../_worker.js'), 'utf8');
 
-const startIndex = workerCode.indexOf('async fetch(request, env, ctx) {');
+const startIndex = workerCode.indexOf('async function 处理请求(request, env, ctx) {');
 if (startIndex === -1) {
-    console.error("Zero-Trust Alert: Could not find fetch function in _worker.js");
+    console.error("Zero-Trust Alert: Could not find request handler in _worker.js");
     process.exit(1);
 }
 
-const fetchBodyLines = workerCode.substring(startIndex).split('\n').slice(0, 10);
+const fetchBodyLines = workerCode.substring(startIndex).split('\n').slice(0, 20);
 const fetchBodyStr = fetchBodyLines.join('\n');
 
 if (!fetchBodyStr.includes('if (!env.KEY) {') || !fetchBodyStr.includes('return new Response(')) {

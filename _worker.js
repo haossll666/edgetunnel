@@ -36,6 +36,15 @@ const Pages静态页面 = 'https://edt-pages.github.io';
 export { 掩码敏感信息, 是否启用日志记录, 是否允许远程订阅转换, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议, 记录最近成功出口命中, 读取最近成功出口命中, 清理出口地理缓存, 读取出口地理缓存项, 读取或刷新出口地理信息, 拉取出口地理信息, 生成出口地域摘要, 生成出口地域展示, 生成带出口地域的节点备注, 解析出口候选键 };
 export default {
 	async fetch(request, env, ctx) {
+		try {
+			return await 处理请求(request, env || {}, ctx || { waitUntil() { } });
+		} catch (error) {
+			return 处理顶层请求异常(request, error);
+		}
+	}
+};
+
+async function 处理请求(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
 		const UA = request.headers.get('User-Agent') || 'null';
 		const upgradeHeader = (request.headers.get('Upgrade') || '').toLowerCase(), contentType = (request.headers.get('content-type') || '').toLowerCase();
@@ -488,8 +497,30 @@ export default {
 			return 反代响应;
 		} catch (error) { }
 		return new Response(await nginx(), { status: 200, headers: { 'Content-Type': 'text/html; charset=UTF-8' } });
-	}
-};
+}
+
+function 处理顶层请求异常(request, error) {
+	const 消息 = error?.stack || error?.message || String(error);
+	console.error(`顶层请求异常: ${消息}`);
+	try {
+		const url = new URL(修正请求URL(request.url));
+		if (url.pathname.toLowerCase() === '/login' && request.method === 'GET') {
+			return new Response(生成本地登录页HTML(url.host), {
+				status: 200,
+				headers: {
+					'Content-Type': 'text/html; charset=UTF-8',
+					'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+					'Pragma': 'no-cache',
+					'Expires': '0',
+				},
+			});
+		}
+	} catch { }
+	return new Response(`Worker runtime error: ${error?.message || String(error)}`, {
+		status: 500,
+		headers: { 'Content-Type': 'text/plain;charset=utf-8', 'Cache-Control': 'no-store' },
+	});
+}
 ///////////////////////////////////////////////////////////////////////XHTTP传输数据///////////////////////////////////////////////
 async function 处理XHTTP请求(request, yourUUID, ctx = null) {
 	if (!request.body) return new Response('Bad Request', { status: 400 });

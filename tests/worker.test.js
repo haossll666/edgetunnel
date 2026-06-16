@@ -1031,6 +1031,22 @@ test('登录入口的前置环境异常应回退到本地页', async (t) => {
 		assert.match(body, /登录设置页面/);
 		assert.match(body, /id="loginForm"/);
 	});
+
+	await t.test('最早期 KEY 读取异常时仍应显示本地登录页', async () => {
+		const env = {};
+		Object.defineProperty(env, 'KEY', {
+			enumerable: true,
+			configurable: true,
+			get() {
+				throw new Error('key boom');
+			},
+		});
+		const response = await worker.fetch(makeLoginRequest(), env, { waitUntil() { } });
+		assert.equal(response.status, 200);
+		const body = await response.text();
+		assert.match(body, /登录后台/);
+		assert.match(body, /管理员密码/);
+	});
 });
 
 test('清理Cloudflare使用量缓存 (Cloudflare Usage Cache Reset)', async () => {
