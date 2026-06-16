@@ -2,11 +2,11 @@
 
 Update it after every shipped slice.
 
-## Stage 2 — 国内 AI 可用性诊断（按用户确认目标）
+## [WIP] Stage 2 — A5（按需求 §6 顺序）
 
-Status: done.
+Status: next.
 
-Goal：先做“国内 AI 服务可用性 runbook + diagnostics 只读增强”，不改变订阅输出和二维码兼容性。
+Goal：见 `docs/brainstorms/edgetunnel-improvement-directions-20260417-requirements.md` §3 / §6。
 
 ## NOW
 
@@ -14,15 +14,9 @@ Goal：先做“国内 AI 服务可用性 runbook + diagnostics 只读增强”�
 
 ## NEXT
 
-- B2：手动按钮式 ProxyIP / ADD.txt 健康刷新（每次 ≤ 15 个候选，避免外部 subrequest 和 KV 写放大）。
-- A5：非业务路径收敛为 404（需 method/header gate 测试先行）。
-- F1/F3：客户端策略和规则集优化（订阅内容变更，必须契约先行）。
+- B2 → B1（spike）→ E1 → F1+F3 …
 
 ## Done
-
-### S2-1 — 国内 AI 服务可用性 runbook + diagnostics 只读增强
-
-Status: Done — 新增 `docs/RUNBOOK-CN-AI-ACCESS.md`，把国内 ChatGPT / X / Claude / Gemini 可用性拆成客户端分流规则、Cloudflare 优选 IP、PROXYIP / ADD.txt 自动池三层；`/admin/diagnostics` 新增只读 `aiAccess` 诊断段，展示 AI 服务域名组、出口策略来源、最近出口状态、DNS 建议与下一步建议；未触碰 `/sub` 输出、token、UUID、`config_JSON.LINK` 或二维码兼容行为。
 
 ### S1-6 — 自动反代出口地域展示
 
