@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议 } from '../_worker.js';
+import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议, 记录最近成功出口命中, 读取最近成功出口命中, 清理出口地理缓存, 读取出口地理缓存项, 读取或刷新出口地理信息, 生成出口地域摘要 } from '../_worker.js';
 import { createKvMock } from './_kv-mock.mjs';
 
 test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
@@ -643,15 +643,29 @@ test('生成管理诊断视图 (Admin Diagnostics View)', async (t) => {
 	await t.test('should expose recovery routes without secrets', async () => {
 		清理自动反代池缓存();
 		清理自动反代健康缓存();
+		清理出口地理缓存();
 		await 选择反代策略({ KV: { get: async () => '198.51.100.1:443\n203.0.113.2:22\nbad host:443' }, AUTO_PROXY_POOL_SIZE: '4' }, {
 			host: 'example.com',
 			colo: 'HKG',
 			目标站点: 'target.example.com'
 		});
-		const view = 生成管理诊断视图(new URL('https://example.com/admin/diagnostics'), {
+		记录最近成功出口命中('198.51.100.1:443', 'target.example.com');
+		const geoFetch = async (input) => {
+			assert.equal(String(input), 'https://ipapi.co/198.51.100.1/json/');
+			return new Response(JSON.stringify({
+				country_code: 'US',
+				country_name: 'United States',
+				region: 'California',
+				city: 'Los Angeles',
+			}), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			});
+		};
+		const view = await 生成管理诊断视图(new URL('https://example.com/admin/diagnostics'), {
 			LINK: 'vless://stable-entry',
 			优选订阅生成: { SUBUpdateTime: 3 },
-		}, { OFF_LOG: '1' });
+		}, { OFF_LOG: '1' }, { fetchImpl: geoFetch });
 
 		assert.equal(view.route, '/admin/diagnostics');
 		assert.equal(view.host, 'example.com');
@@ -672,12 +686,59 @@ test('生成管理诊断视图 (Admin Diagnostics View)', async (t) => {
 			topScoreBand: 'none',
 			healthStatus: 'unknown',
 		});
+		assert.deepEqual(view.proxyExit.lastSuccess, {
+			candidate: '198.51.100.1:443',
+			targetSite: 'target.example.com',
+			matchedAt: view.proxyExit.lastSuccess.matchedAt,
+		});
+		assert.equal(view.proxyExit.location.status, 'fresh');
+		assert.equal(view.proxyExit.location.countryCode, 'US');
+		assert.equal(view.proxyExit.location.countryName, 'United States');
+		assert.equal(view.proxyExit.location.label, 'United States / California');
+		assert.equal(view.proxyExit.location.city, 'Los Angeles');
+		assert.equal(view.proxyExit.cache.hasCachedValue, true);
 		assert.match(view.autoProxyPool.advice, /优先检查 ADD\.txt 来源质量/);
 		assert.equal(view.autoProxyPool.filtering.rawCandidates, undefined);
 		assert.ok(Array.isArray(view.recovery));
 		assert.equal(view.recovery[0], '先确认 /admin 可打开');
 		assert.equal(typeof view.build.gitDescribe, 'string');
 		assert.ok(view.build.gitDescribe.length > 0);
+	});
+});
+
+test('出口地理缓存 (Exit Geo Cache)', async (t) => {
+	await t.test('should cache geo lookups per candidate and reuse the cached value', async () => {
+		清理出口地理缓存();
+		let fetchCount = 0;
+		const geoFetch = async () => {
+			fetchCount += 1;
+			return new Response(JSON.stringify({
+				country_code: 'JP',
+				country_name: 'Japan',
+				region: 'Tokyo',
+				city: 'Tokyo',
+			}), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			});
+		};
+
+		const first = await 读取或刷新出口地理信息('203.0.113.10:443', { fetchImpl: geoFetch });
+		const second = await 读取或刷新出口地理信息('203.0.113.10:443', { fetchImpl: geoFetch });
+
+		assert.equal(fetchCount, 1);
+		assert.equal(first.countryCode, 'JP');
+		assert.equal(生成出口地域摘要(first).label, 'Japan / Tokyo');
+		assert.equal(second.countryName, 'Japan');
+		assert.equal(读取出口地理缓存项('203.0.113.10:443').countryName, 'Japan');
+	});
+
+	await t.test('should remember the most recent successful exit candidate', () => {
+		清理出口地理缓存();
+		const hit = 记录最近成功出口命中('203.0.113.11:8443', 'alpha.example.com');
+		const copy = 读取最近成功出口命中();
+		assert.equal(hit.候选键, '203.0.113.11:8443');
+		assert.equal(copy.目标站点, 'alpha.example.com');
 	});
 });
 

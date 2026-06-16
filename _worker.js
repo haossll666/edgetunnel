@@ -20,16 +20,20 @@ const CF配置缓存 = new Map();
 const 基础配置缓存 = new Map();
 const 自动反代池缓存 = new Map();
 const 自动反代健康缓存 = new Map();
+const 出口地理缓存 = new Map();
+const 出口地理请求中继 = new Map();
 const 自动反代健康过期毫秒 = 10 * 60 * 1000;
 const 自动反代健康衰减间隔毫秒 = 2 * 60 * 1000;
 const 自动反代健康冷却毫秒 = 30 * 1000;
+const 出口地理缓存过期毫秒 = 24 * 60 * 60 * 1000;
 const 自动反代允许端口 = new Set([80, 443, 2052, 2053, 2082, 2083, 2086, 2087, 2095, 2096, 8080, 8443, 8880]);
 let 自动反代过滤诊断 = null;
 let 自动反代最近候选快照 = [];
+let 最近成功出口命中 = null;
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
-export { 掩码敏感信息, 是否启用日志记录, 是否允许远程订阅转换, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议 };
+export { 掩码敏感信息, 是否启用日志记录, 是否允许远程订阅转换, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议, 记录最近成功出口命中, 读取最近成功出口命中, 清理出口地理缓存, 读取出口地理缓存项, 读取或刷新出口地理信息, 拉取出口地理信息, 生成出口地域摘要, 生成出口地域展示, 解析出口候选键 };
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
@@ -66,17 +70,17 @@ export default {
 		} else if (管理员密码 && upgradeHeader === 'websocket') {// WebSocket代理
 			await 反代参数获取(url);
 			log(`[WebSocket] 命中请求: ${url.pathname}${url.search}`);
-			return await 处理WS请求(request, userID, url);
+			return await 处理WS请求(request, userID, url, ctx);
 		} else if (管理员密码 && !访问路径.startsWith('admin/') && 访问路径 !== 'login' && request.method === 'POST') {// gRPC/XHTTP代理
 			await 反代参数获取(url);
 			const referer = request.headers.get('Referer') || '';
 			const 命中XHTTP特征 = referer.includes('x_padding', 14) || referer.includes('x_padding=');
 			if (!命中XHTTP特征 && contentType.startsWith('application/grpc')) {
 				log(`[gRPC] 命中请求: ${url.pathname}${url.search}`);
-				return await 处理gRPC请求(request, userID);
+				return await 处理gRPC请求(request, userID, ctx);
 			}
 			log(`[XHTTP] 命中请求: ${url.pathname}${url.search}`);
-			return await 处理XHTTP请求(request, userID);
+			return await 处理XHTTP请求(request, userID, ctx);
 		} else {
 			if (url.protocol === 'http:') return Response.redirect(url.href.replace(`http://${url.hostname}`, `https://${url.hostname}`), 301);
 			if (!管理员密码) return await 获取Pages页面或本地兜底('/noADMIN', 生成本地NoADMIN页HTML(url.host), 404);
@@ -252,7 +256,7 @@ export default {
 					} else if (访问路径 === 'admin/config.json') {// 处理 admin/config.json 请求，返回JSON
 						return new Response(JSON.stringify(config_JSON, null, 2), { status: 200, headers: { 'Content-Type': 'application/json' } });
 					} else if (访问路径 === 'admin/diagnostics') {// 只读诊断视图
-						return new Response(JSON.stringify(生成管理诊断视图(url, config_JSON, env), null, 2), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8', 'Cache-Control': 'no-store' } });
+						return new Response(JSON.stringify(await 生成管理诊断视图(url, config_JSON, env, { fetchImpl: fetch }), null, 2), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8', 'Cache-Control': 'no-store' } });
 					} else if (区分大小写访问路径 === 'admin/ADD.txt') {// 处理 admin/ADD.txt 请求，返回本地优选IP
 						let 本地优选IP = await env.KV.get('ADD.txt') || 'null';
 						if (本地优选IP == 'null') 本地优选IP = (await 生成随机IP(request, config_JSON.优选订阅生成.本地IP库.随机数量, config_JSON.优选订阅生成.本地IP库.指定端口, (config_JSON.协议类型 === 'ss' ? config_JSON.SS.TLS : true)))[1];
@@ -472,7 +476,7 @@ export default {
 	}
 };
 ///////////////////////////////////////////////////////////////////////XHTTP传输数据///////////////////////////////////////////////
-async function 处理XHTTP请求(request, yourUUID) {
+async function 处理XHTTP请求(request, yourUUID, ctx = null) {
 	if (!request.body) return new Response('Bad Request', { status: 400 });
 	const reader = request.body.getReader();
 	const 首包 = await 读取XHTTP首包(reader, yourUUID);
@@ -570,7 +574,7 @@ async function 处理XHTTP请求(request, yourUUID) {
 						udpRespHeader = null;
 					}
 				} else {
-					await forwardataTCP(首包.hostname, 首包.port, 首包.rawData, xhttpBridge, 首包.respHeader, remoteConnWrapper, yourUUID);
+					await forwardataTCP(首包.hostname, 首包.port, 首包.rawData, xhttpBridge, 首包.respHeader, remoteConnWrapper, yourUUID, ctx);
 				}
 
 				while (true) {
@@ -772,7 +776,7 @@ async function 读取XHTTP首包(reader, token) {
 	return null;
 }
 ///////////////////////////////////////////////////////////////////////gRPC传输数据///////////////////////////////////////////////
-async function 处理gRPC请求(request, yourUUID) {
+async function 处理gRPC请求(request, yourUUID, ctx = null) {
 	if (!request.body) return new Response('Bad Request', { status: 400 });
 	const reader = request.body.getReader();
 	const remoteConnWrapper = { socket: null, connectingPromise: null, retryConnect: null };
@@ -953,7 +957,7 @@ async function 处理gRPC请求(request, yourUUID) {
 								if (解析结果?.hasError) throw new Error(解析结果.message || 'Invalid trojan request');
 								const { port, hostname, rawClientData } = 解析结果;
 								if (isSpeedTestSite(hostname)) throw new Error('Speedtest site is blocked');
-								await forwardataTCP(hostname, port, rawClientData, grpcBridge, null, remoteConnWrapper, yourUUID);
+								await forwardataTCP(hostname, port, rawClientData, grpcBridge, null, remoteConnWrapper, yourUUID, ctx);
 							} else {
 								const 解析结果 = 解析魏烈思请求(首包buffer, yourUUID);
 								if (解析结果?.hasError) throw new Error(解析结果.message || 'Invalid vless request');
@@ -967,7 +971,7 @@ async function 处理gRPC请求(request, yourUUID) {
 								grpcBridge.send(respHeader);
 								const rawData = 首包buffer.slice(rawIndex);
 								if (isDnsQuery) await forwardataudp(rawData, grpcBridge, null);
-								else await forwardataTCP(hostname, port, rawData, grpcBridge, null, remoteConnWrapper, yourUUID);
+								else await forwardataTCP(hostname, port, rawData, grpcBridge, null, remoteConnWrapper, yourUUID, ctx);
 							}
 						}
 					}
@@ -988,7 +992,7 @@ async function 处理gRPC请求(request, yourUUID) {
 }
 
 ///////////////////////////////////////////////////////////////////////WS传输数据///////////////////////////////////////////////
-async function 处理WS请求(request, yourUUID, url) {
+async function 处理WS请求(request, yourUUID, url, ctx = null) {
 	const WS套接字对 = new WebSocketPair();
 	const [clientSock, serverSock] = Object.values(WS套接字对);
 	serverSock.accept();
@@ -1292,7 +1296,7 @@ async function 处理WS请求(request, yourUUID, url) {
 			}
 			if (已写入) continue;
 			if (上下文.首包已建立 && 上下文.目标主机 && 上下文.目标端口 > 0) {
-				await forwardataTCP(上下文.目标主机, 上下文.目标端口, 明文块, 上下文.回包Socket, null, remoteConnWrapper, yourUUID);
+				await forwardataTCP(上下文.目标主机, 上下文.目标端口, 明文块, 上下文.回包Socket, null, remoteConnWrapper, yourUUID, ctx);
 				continue;
 			}
 			const 明文数据 = SS数据转Uint8Array(明文块);
@@ -1329,7 +1333,7 @@ async function 处理WS请求(request, yourUUID, url) {
 			上下文.首包已建立 = true;
 			上下文.目标主机 = hostname;
 			上下文.目标端口 = port;
-			await forwardataTCP(hostname, port, rawClientData, 上下文.回包Socket, null, remoteConnWrapper, yourUUID);
+			await forwardataTCP(hostname, port, rawClientData, 上下文.回包Socket, null, remoteConnWrapper, yourUUID, ctx);
 		}
 	};
 
@@ -1361,7 +1365,7 @@ async function 处理WS请求(request, yourUUID, url) {
 				if (解析结果?.hasError) throw new Error(解析结果.message || 'Invalid trojan request');
 				const { port, hostname, rawClientData } = 解析结果;
 				if (isSpeedTestSite(hostname)) throw new Error('Speedtest site is blocked');
-				await forwardataTCP(hostname, port, rawClientData, serverSock, null, remoteConnWrapper, yourUUID);
+				await forwardataTCP(hostname, port, rawClientData, serverSock, null, remoteConnWrapper, yourUUID, ctx);
 			} else {
 				const 解析结果 = 解析魏烈思请求(chunk, yourUUID);
 				if (解析结果?.hasError) throw new Error(解析结果.message || 'Invalid vless request');
@@ -1374,7 +1378,7 @@ async function 处理WS请求(request, yourUUID, url) {
 				const respHeader = new Uint8Array([version[0], 0]);
 				const rawData = chunk.slice(rawIndex);
 				if (isDnsQuery) return forwardataudp(rawData, serverSock, respHeader);
-				await forwardataTCP(hostname, port, rawData, serverSock, respHeader, remoteConnWrapper, yourUUID);
+				await forwardataTCP(hostname, port, rawData, serverSock, respHeader, remoteConnWrapper, yourUUID, ctx);
 			}
 		},
 		close() {
@@ -1582,7 +1586,7 @@ async function SSAEAD解密(cryptoKey, nonceCounter, ciphertext) {
 	return new Uint8Array(pt);
 }
 
-async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnWrapper, yourUUID) {
+async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnWrapper, yourUUID, ctx = null) {
 	log(`[TCP转发] 目标: ${host}:${portNum} | 反代IP: ${反代IP} | 反代兜底: ${启用反代兜底 ? '是' : '否'} | 反代类型: ${启用SOCKS5反代 || 'proxyip'} | 全局: ${启用SOCKS5全局反代 ? '是' : '否'}`);
 	const 连接超时毫秒 = 1000;
 	let 已通过代理发送首包 = false;
@@ -1613,6 +1617,10 @@ async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnW
 					}
 					log(`[反代连接] 成功连接到: ${反代地址}:${反代端口}`);
 					const 候选键 = `${反代地址}:${反代端口}`;
+					记录最近成功出口命中(候选键, 目标健康站点);
+					if (ctx?.waitUntil) {
+						ctx.waitUntil(读取或刷新出口地理信息(候选键, { fetchImpl: fetch }));
+					}
 					if (是否允许记录自动反代健康结果(候选键)) {
 						记录自动反代健康结果(候选键, true, 目标健康站点);
 					}
@@ -2007,9 +2015,11 @@ function 生成订阅稳定首项(config_JSON = {}) {
 	return 稳定首项.endsWith('\n') ? 稳定首项 : `${稳定首项}\n`;
 }
 
-function 生成管理诊断视图(url, config_JSON = {}, env = {}) {
+async function 生成管理诊断视图(url, config_JSON = {}, env = {}, { fetchImpl = fetch } = {}) {
 	const 自动池过滤 = 读取自动反代过滤诊断();
 	const 自动池健康 = 读取自动反代健康摘要();
+	const 最近命中 = 读取最近成功出口命中();
+	const 最近地理信息 = 最近命中?.候选键 ? await 读取或刷新出口地理信息(最近命中.候选键, { fetchImpl }) : null;
 	return {
 		route: url?.pathname || '',
 		host: url?.host || '',
@@ -2033,6 +2043,7 @@ function 生成管理诊断视图(url, config_JSON = {}, env = {}) {
 			health: 自动池健康,
 			advice: 生成自动反代诊断建议(自动池过滤, 自动池健康),
 		},
+		proxyExit: 生成出口地域展示(最近命中, 最近地理信息),
 		recovery: [
 			'先确认 /admin 可打开',
 			'再确认 /admin/config.json 里仍有 config_JSON.LINK',
@@ -2040,6 +2051,183 @@ function 生成管理诊断视图(url, config_JSON = {}, env = {}) {
 		],
 		build: {
 			gitDescribe: WorkerGitDescribe,
+		},
+	};
+}
+
+function 解析出口候选键(候选键 = '') {
+	if (typeof 候选键 !== 'string') return null;
+	const 原始值 = 候选键.trim();
+	if (!原始值) return null;
+	const 紧凑值 = 原始值.startsWith('[') && 原始值.includes(']') ? 原始值.replace(/^\[([^\]]+)\]:(\d+)$/, '$1:$2') : 原始值;
+	const 索引 = 紧凑值.lastIndexOf(':');
+	if (索引 <= 0) return null;
+	const 主机 = 紧凑值.slice(0, 索引).replace(/^\[|\]$/g, '').trim();
+	const 端口 = Number.parseInt(紧凑值.slice(索引 + 1), 10);
+	if (!主机 || !Number.isInteger(端口) || 端口 <= 0 || 端口 > 65535) return null;
+	return { 主机, 端口, 键: `${主机}:${端口}` };
+}
+
+function 记录最近成功出口命中(候选键, 目标站点 = '*') {
+	const 解析 = 解析出口候选键(候选键);
+	if (!解析) return null;
+	最近成功出口命中 = {
+		候选键: 解析.键,
+		目标站点: 规范化健康目标站点(目标站点),
+		命中时间: Date.now(),
+	};
+	return 最近成功出口命中;
+}
+
+function 读取最近成功出口命中() {
+	return 最近成功出口命中 ? JSON.parse(JSON.stringify(最近成功出口命中)) : null;
+}
+
+function 清理出口地理缓存() {
+	出口地理缓存.clear();
+	出口地理请求中继.clear();
+	最近成功出口命中 = null;
+}
+
+function 读取出口地理缓存项(候选键) {
+	const 解析 = 解析出口候选键(候选键);
+	if (!解析) return null;
+	const 缓存项 = 出口地理缓存.get(解析.键);
+	if (!缓存项) return null;
+	return JSON.parse(JSON.stringify(缓存项.数据));
+}
+
+function 生成出口地域摘要(地理信息 = null) {
+	if (!地理信息 || !地理信息.success) {
+		return {
+			status: 'unknown',
+			label: '未知',
+			countryCode: null,
+			countryName: null,
+			region: null,
+			city: null,
+			source: 地理信息?.source || 'ipapi.co',
+			updatedAt: 地理信息?.updatedAt || null,
+			error: 地理信息?.error || null,
+		};
+	}
+	const 标签 = [地理信息.countryName || 地理信息.countryCode || '', 地理信息.region || '']
+		.map(v => String(v || '').trim())
+		.filter(Boolean)
+		.join(' / ');
+	return {
+		status: 'fresh',
+		label: 标签 || '未知',
+		countryCode: 地理信息.countryCode || null,
+		countryName: 地理信息.countryName || null,
+		region: 地理信息.region || null,
+		city: 地理信息.city || null,
+		source: 地理信息.source || 'ipapi.co',
+		updatedAt: 地理信息.updatedAt || null,
+		error: null,
+	};
+}
+
+async function 拉取出口地理信息(候选键, { fetchImpl = fetch, timeoutMs = 2500 } = {}) {
+	const 解析 = 解析出口候选键(候选键);
+	if (!解析) return null;
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(new Error('geo timeout')), timeoutMs);
+	try {
+		const response = await fetchImpl(`https://ipapi.co/${encodeURIComponent(解析.主机)}/json/`, {
+			signal: controller.signal,
+			headers: {
+				'Accept': 'application/json',
+			},
+		});
+		if (!response.ok) {
+			throw new Error(`geo api ${response.status}`);
+		}
+		const payload = await response.json();
+		const countryCode = String(payload.country_code || payload.country || '').trim().toUpperCase() || null;
+		const countryName = String(payload.country_name || payload.country || '').trim() || null;
+		const region = String(payload.region || payload.region_code || '').trim() || null;
+		const city = String(payload.city || '').trim() || null;
+		const org = String(payload.org || payload.asn || '').trim() || null;
+		return {
+			success: Boolean(countryCode || countryName),
+			source: 'ipapi.co',
+			candidate: 解析.键,
+			ip: 解析.主机,
+			port: 解析.端口,
+			countryCode,
+			countryName,
+			region,
+			city,
+			org,
+			fetchedAt: Date.now(),
+			updatedAt: Date.now(),
+		};
+	} catch (error) {
+		return {
+			success: false,
+			source: 'ipapi.co',
+			candidate: 解析.键,
+			ip: 解析.主机,
+			port: 解析.端口,
+			error: error?.message || String(error),
+			fetchedAt: Date.now(),
+			updatedAt: Date.now(),
+		};
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
+async function 读取或刷新出口地理信息(候选键, { refresh = false, fetchImpl = fetch, timeoutMs = 2500 } = {}) {
+	const 解析 = 解析出口候选键(候选键);
+	if (!解析) return null;
+	const now = Date.now();
+	const 缓存项 = 出口地理缓存.get(解析.键);
+	if (缓存项 && 缓存项.过期时间 > now && !refresh) {
+		return JSON.parse(JSON.stringify(缓存项.数据));
+	}
+
+	const 已有中继 = 出口地理请求中继.get(解析.键);
+	if (已有中继 && !refresh) {
+		return JSON.parse(JSON.stringify(await 已有中继));
+	}
+
+	const 请求 = (async () => {
+		const 结果 = await 拉取出口地理信息(解析.键, { fetchImpl, timeoutMs });
+		const 数据 = 结果 && 结果.success
+			? 结果
+			: (缓存项?.数据 || 结果);
+		if (数据) {
+			出口地理缓存.set(解析.键, {
+				数据,
+				过期时间: Date.now() + 出口地理缓存过期毫秒,
+			});
+		}
+		return 数据;
+	})();
+	出口地理请求中继.set(解析.键, 请求);
+	try {
+		const 结果 = await 请求;
+		return 结果 ? JSON.parse(JSON.stringify(结果)) : null;
+	} finally {
+		出口地理请求中继.delete(解析.键);
+	}
+}
+
+function 生成出口地域展示(最近成功出口, 地理信息) {
+	const 命中 = 最近成功出口 ? JSON.parse(JSON.stringify(最近成功出口)) : null;
+	const 地理摘要 = 生成出口地域摘要(地理信息);
+	return {
+		lastSuccess: 命中 ? {
+			candidate: 命中.候选键,
+			targetSite: 命中.目标站点,
+			matchedAt: 命中.命中时间,
+		} : null,
+		location: 地理摘要,
+		cache: {
+			ttlMs: 出口地理缓存过期毫秒,
+			hasCachedValue: Boolean(命中?.候选键 && 出口地理缓存.has(命中.候选键)),
 		},
 	};
 }
@@ -2711,7 +2899,7 @@ function 生成本地Admin页HTML(host) {
 		<div class="grid">
 			<a class="card" href="/login"><strong>返回登录</strong><span>重新进入管理员登录流程。</span></a>
 			<a class="card" href="/admin/config.json"><strong>配置 JSON</strong><span>查看当前配置快照。</span></a>
-			<a class="card" href="/admin/diagnostics"><strong>诊断视图</strong><span>查看恢复入口和订阅摘要。</span></a>
+			<a class="card" href="/admin/diagnostics"><strong>诊断视图</strong><span>查看恢复入口、订阅摘要和出口地域。</span></a>
 			<a class="card" href="/admin/ADD.txt"><strong>ADD.txt</strong><span>查看或刷新本地优选 IP。</span></a>
 			<a class="card" href="/admin/cf.json"><strong>Cloudflare 原始信息</strong><span>查看当前请求的 CF 上下文。</span></a>
 			<a class="card" href="/logout"><strong>退出登录</strong><span>清除会话并回到登录页。</span></a>
