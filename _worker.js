@@ -48,11 +48,21 @@ export default {
 		const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 		const envUUID = env.UUID || env.uuid;
 		const userID = (envUUID && uuidRegex.test(envUUID)) ? envUUID.toLowerCase() : [userIDHash.slice(0, 8), userIDHash.slice(8, 12), '4' + userIDHash.slice(13, 16), '8' + userIDHash.slice(17, 20), userIDHash.slice(20, 32)].join('-');
-		const hosts = env.HOST ? (await 整理成数组(env.HOST)).map(h => { const m = h.match(/^(?:https?:\/\/)?([^/:]+)/i); return (m ? m[1] : h).toLowerCase(); }) : [url.hostname];
-		const host = hosts[0];
+		let hosts = [url.hostname];
+		try {
+			hosts = env.HOST ? (await 整理成数组(env.HOST)).map(h => { const m = h.match(/^(?:https?:\/\/)?([^/:]+)/i); return (m ? m[1] : h).toLowerCase(); }) : [url.hostname];
+		} catch (error) {
+			console.error(`读取 HOST 失败: ${error.message}`);
+		}
+		const host = hosts[0] || url.hostname;
 		const 访问路径 = url.pathname.slice(1).toLowerCase();
 		调试日志打印 = ['1', 'true'].includes(env.DEBUG) || 调试日志打印;
-		const 反代策略 = await 选择反代策略(env, { host, colo: request.cf?.colo || '' });
+		let 反代策略 = { 反代IP: '', 启用反代兜底: false, 来源: 'disabled' };
+		try {
+			反代策略 = await 选择反代策略(env, { host, colo: request.cf?.colo || '' });
+		} catch (error) {
+			console.error(`选择反代策略失败: ${error.message}`);
+		}
 		反代IP = 反代策略.反代IP;
 		启用反代兜底 = 反代策略.启用反代兜底;
 		当前自动反代策略 = 反代策略.来源 === 'kv.ADD.txt'
@@ -64,7 +74,11 @@ export default {
 			}
 			: null;
 		const 访问IP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Real-IP') || request.headers.get('X-Forwarded-For') || request.headers.get('True-Client-IP') || request.headers.get('Fly-Client-IP') || request.headers.get('X-Appengine-Remote-Addr') || request.headers.get('X-Cluster-Client-IP') || request.cf?.clientTcpRtt || '未知IP';
-		if (env.GO2SOCKS5) SOCKS5白名单 = await 整理成数组(env.GO2SOCKS5);
+		try {
+			if (env.GO2SOCKS5) SOCKS5白名单 = await 整理成数组(env.GO2SOCKS5);
+		} catch (error) {
+			console.error(`读取 GO2SOCKS5 失败: ${error.message}`);
+		}
 		if (访问路径 === 'version' && url.searchParams.get('uuid') === userID) {// 版本信息接口
 			return new Response(JSON.stringify({ Version: Number(String(Version).replace(/\D+/g, '')) }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 		} else if (管理员密码 && upgradeHeader === 'websocket') {// WebSocket代理

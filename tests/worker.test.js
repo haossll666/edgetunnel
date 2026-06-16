@@ -985,6 +985,54 @@ test('C2 — 登录失败指数退避（KV 仅状态跃迁 + 日写熔断）', a
 	});
 });
 
+test('登录入口的前置环境异常应回退到本地页', async (t) => {
+	const makeLoginRequest = () => {
+		const base = new Request('https://et.example/login', {
+			headers: { 'CF-Connecting-IP': '198.51.100.60' },
+		});
+		return new Proxy(base, {
+			get(target, prop, receiver) {
+				if (prop === 'cf') return { colo: 'TST', asn: 13335 };
+				return Reflect.get(target, prop, receiver);
+			},
+		});
+	};
+
+	await t.test('HOST 读取异常时仍应显示本地登录页', async () => {
+		const { kv } = createKvMock({});
+		const env = { KEY: 'k', ADMIN: 'goodpw', KV: kv };
+		Object.defineProperty(env, 'HOST', {
+			enumerable: true,
+			configurable: true,
+			get() {
+				throw new Error('host boom');
+			},
+		});
+		const response = await worker.fetch(makeLoginRequest(), env, { waitUntil() { } });
+		assert.equal(response.status, 200);
+		const body = await response.text();
+		assert.match(body, /登录设置页面/);
+		assert.match(body, /id="loginForm"/);
+	});
+
+	await t.test('PROXYIP 读取异常时仍应显示本地登录页', async () => {
+		const { kv } = createKvMock({});
+		const env = { KEY: 'k', ADMIN: 'goodpw', KV: kv, HOST: 'et.example' };
+		Object.defineProperty(env, 'PROXYIP', {
+			enumerable: true,
+			configurable: true,
+			get() {
+				throw new Error('proxy boom');
+			},
+		});
+		const response = await worker.fetch(makeLoginRequest(), env, { waitUntil() { } });
+		assert.equal(response.status, 200);
+		const body = await response.text();
+		assert.match(body, /登录设置页面/);
+		assert.match(body, /id="loginForm"/);
+	});
+});
+
 test('清理Cloudflare使用量缓存 (Cloudflare Usage Cache Reset)', async () => {
 	清理Cloudflare使用量缓存();
 	// 先占位写入，确保清理会同时移除两个缓存层。
