@@ -573,6 +573,52 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 			Date.now = originalNow;
 		}
 	});
+
+	await t.test('should not leak request-scoped fields across cached config reads', async () => {
+		清理基础配置缓存();
+		const configJson = {
+			HOST: 'cached.example.com',
+			UUID: 'uuid-abc',
+			gRPCUserAgent: 'UA',
+			优选订阅生成: {
+				local: true,
+				本地IP库: { 随机IP: true, 随机数量: 16, 指定端口: -1 },
+				SUB: null,
+				SUBNAME: 'edge tunnel',
+				SUBUpdateTime: 3,
+				TOKEN: 'token',
+			},
+			订阅转换配置: { SUBAPI: 'https://example.com', SUBCONFIG: 'x', SUBEMOJI: false },
+			反代: {
+				auto: 'auto',
+				SOCKS5: { 启用: null, 全局: false, 账号: null, 白名单: [] },
+				路径模板: {
+					auto: 'proxyip={{IP:PORT}}',
+					SOCKS5: { 全局: 'socks5://{{IP:PORT}}', 标准: 'socks5={{IP:PORT}}' },
+					HTTP: { 全局: 'http://{{IP:PORT}}', 标准: 'http={{IP:PORT}}' },
+				},
+			},
+			TG: { 启用: false, BotToken: null, ChatID: null },
+			CF: {
+				Email: null,
+				GlobalAPIKey: null,
+				AccountID: null,
+				APIToken: null,
+				UsageAPI: null,
+				Usage: { success: false, pages: 0, workers: 0, total: 0, max: 100000 },
+			},
+		};
+		const m = createKvMock({ 'config.json': JSON.stringify(configJson) });
+		const kv = m.kv;
+		const first = await 读取config_JSON({ KV: kv }, 'first.example', 'uuid-1', 'UA/1.0', false, false);
+		const second = await 读取config_JSON({ KV: kv }, 'second.example', 'uuid-2', 'UA/1.0', false, false);
+		assert.equal(first.HOST, 'first.example');
+		assert.equal(first.UUID, 'uuid-1');
+		assert.deepEqual(first.HOSTS, ['first.example']);
+		assert.equal(second.HOST, 'second.example');
+		assert.equal(second.UUID, 'uuid-2');
+		assert.deepEqual(second.HOSTS, ['second.example']);
+	});
 });
 
 test('生成订阅稳定首项 (Stable Subscription First Entry)', async (t) => {

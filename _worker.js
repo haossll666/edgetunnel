@@ -3263,21 +3263,27 @@ async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重�
 	try {
 		const 当前时间戳 = Date.now();
 		const 缓存项 = 基础配置缓存.get('config.json');
+		const 复制配置 = (值) => {
+			if (typeof structuredClone === 'function') return structuredClone(值);
+			return JSON.parse(JSON.stringify(值));
+		};
+		let 基线配置;
 		if (!重置配置 && 缓存项 && 当前时间戳 - 缓存项.TIME < 5 * 60 * 1000) {
-			config_JSON = 缓存项.值;
+			基线配置 = 缓存项.值;
 		} else {
 			let configJSON = await env.KV.get('config.json');
 			if (!configJSON || 重置配置 == true) {
 				await env.KV.put('config.json', JSON.stringify(默认配置JSON, null, 2));
-				config_JSON = 默认配置JSON;
+				基线配置 = 默认配置JSON;
 			} else {
-				config_JSON = JSON.parse(configJSON);
+				基线配置 = JSON.parse(configJSON);
 			}
-			基础配置缓存.set('config.json', { TIME: 当前时间戳, 值: config_JSON });
+			基础配置缓存.set('config.json', { TIME: 当前时间戳, 值: 基线配置 });
 			for (const [key, value] of 基础配置缓存.entries()) {
 				if (当前时间戳 - value.TIME >= 5 * 60 * 1000) 基础配置缓存.delete(key);
 			}
 		}
+		config_JSON = 复制配置(基线配置);
 	} catch (error) {
 		console.error(`读取config_JSON出错: ${error.message}`);
 		config_JSON = 默认配置JSON;
