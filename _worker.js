@@ -59,6 +59,7 @@ async function 处理请求(request, env, ctx) {
 						},
 					});
 				}
+				return await 获取Pages页面或本地兜底('/login', 生成本地登录页HTML(url.host), 200);
 			} catch (error) {
 				console.error(`登录页 KEY 预检失败: ${error.message}`);
 				return new Response(生成本地登录页HTML(url.host), {
@@ -2894,11 +2895,15 @@ async function 获取Pages页面或本地兜底(路径, 本地HTML, 状态码 = 
 	try {
 		const response = await fetchFn(Pages静态页面 + 路径);
 		if (!response.ok) throw new Error(`Pages response ${response.status}`);
+		const html = await response.text();
+		if (!Pages兜底内容校验(路径, html)) {
+			throw new Error(`Pages content mismatch for ${路径}`);
+		}
 		const headers = new Headers(response.headers);
 		headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 		headers.set('Pragma', 'no-cache');
 		headers.set('Expires', '0');
-		return new Response(response.body, { status: 状态码, statusText: response.statusText, headers });
+		return new Response(html, { status: 状态码, statusText: response.statusText, headers });
 	} catch (error) {
 		console.error(`Pages 页面兜底失败 ${路径}: ${error.message}`);
 		return new Response(本地HTML, {
@@ -2911,6 +2916,19 @@ async function 获取Pages页面或本地兜底(路径, 本地HTML, 状态码 = 
 			},
 		});
 	}
+}
+
+function Pages兜底内容校验(路径, 内容) {
+	const 校验规则 = {
+		'/login': /<form[^>]*action=["']\/login["']/i,
+		'/admin': /\/admin\/config\.json|\/admin\/diagnostics|build\.gitDescribe|id=["']admin-panel["']/i,
+		'/noadmin': /ADMIN|管理员|noadmin/i,
+		'/nokv': /KV|nokv|绑定 KV/i,
+	};
+	const key = String(路径 || '').toLowerCase().split('?')[0];
+	const rule = 校验规则[key];
+	if (!rule) return true;
+	return rule.test(String(内容 || ''));
 }
 
 function 转义HTML(内容) {

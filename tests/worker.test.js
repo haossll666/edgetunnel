@@ -111,10 +111,10 @@ test('是否跳过Get_SUB日志KV写入 (Skip Get_SUB Log KV Writes)', async (t)
 
 test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 	await t.test('should return remote response when fetch succeeds', async () => {
-		const remoteFetch = async () => new Response('remote login', { status: 200, headers: { 'X-Test': '1' } });
+		const remoteFetch = async () => new Response('<form method="post" action="/login">remote login</form>', { status: 200, headers: { 'X-Test': '1' } });
 		const response = await 获取Pages页面或本地兜底('/login', '<html>fallback</html>', 200, remoteFetch);
 		assert.equal(response.status, 200);
-		assert.equal(await response.text(), 'remote login');
+		assert.match(await response.text(), /action="\/login"/);
 		assert.equal(response.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
 	});
 
@@ -130,6 +130,15 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 	await t.test('should fall back to local login HTML when Pages returns non-2xx', async () => {
 		const errorFetch = async () => new Response('host error', { status: 522, statusText: 'Connection timed out' });
 		const response = await 获取Pages页面或本地兜底('/login', 生成本地登录页HTML('example.com'), 200, errorFetch);
+		const body = await response.text();
+		assert.equal(response.status, 200);
+		assert.match(body, /<form method="post" action="\/login">/);
+		assert.match(body, /登录后台/);
+	});
+
+	await t.test('should fall back to local login HTML when Pages content is mismatched', async () => {
+		const mismatchedFetch = async () => new Response('<html><body>Welcome to nginx!</body></html>', { status: 200 });
+		const response = await 获取Pages页面或本地兜底('/login', 生成本地登录页HTML('example.com'), 200, mismatchedFetch);
 		const body = await response.text();
 		assert.equal(response.status, 200);
 		assert.match(body, /<form method="post" action="\/login">/);
@@ -1011,8 +1020,8 @@ test('登录入口的前置环境异常应回退到本地页', async (t) => {
 		const response = await worker.fetch(makeLoginRequest(), env, { waitUntil() { } });
 		assert.equal(response.status, 200);
 		const body = await response.text();
-		assert.match(body, /登录设置页面/);
-		assert.match(body, /id="loginForm"/);
+		assert.match(body, /登录后台/);
+		assert.match(body, /<form method="post" action="\/login">/);
 	});
 
 	await t.test('PROXYIP 读取异常时仍应显示本地登录页', async () => {
@@ -1028,8 +1037,8 @@ test('登录入口的前置环境异常应回退到本地页', async (t) => {
 		const response = await worker.fetch(makeLoginRequest(), env, { waitUntil() { } });
 		assert.equal(response.status, 200);
 		const body = await response.text();
-		assert.match(body, /登录设置页面/);
-		assert.match(body, /id="loginForm"/);
+		assert.match(body, /登录后台/);
+		assert.match(body, /<form method="post" action="\/login">/);
 	});
 
 	await t.test('最早期 KEY 读取异常时仍应显示本地登录页', async () => {
@@ -1077,6 +1086,17 @@ test('登录入口的前置环境异常应回退到本地页', async (t) => {
 		assert.equal(response.status, 500);
 		const body = await response.text();
 		assert.match(body, /Missing KEY environment variable/);
+	});
+
+	await t.test('/diag 应返回只读诊断信息', async () => {
+		const response = await worker.fetch(new Request('https://example.com/diag'), {}, { waitUntil() { } });
+		assert.equal(response.status, 200);
+		const body = await response.json();
+		assert.equal(body.pathname, '/diag');
+		assert.equal(body.method, 'GET');
+		assert.equal(body.key.ok, true);
+		assert.equal(body.admin.ok, true);
+		assert.equal(typeof body.kv.ok, 'boolean');
 	});
 });
 
