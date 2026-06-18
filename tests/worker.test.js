@@ -126,6 +126,19 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 		assert.equal(response.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
 	});
 
+	await t.test('should cache remote page snapshot within ttl when enabled', async () => {
+		let fetchCount = 0;
+		const remoteFetch = async () => {
+			fetchCount += 1;
+			return new Response(`remote-${fetchCount}`, { status: 200, headers: { 'X-Test': '1' } });
+		};
+		const first = await 获取Pages页面或本地兜底('/login-cache', '<html>fallback</html>', 200, remoteFetch, true);
+		const second = await 获取Pages页面或本地兜底('/login-cache', '<html>fallback</html>', 200, remoteFetch, true);
+		assert.equal(await first.text(), 'remote-1');
+		assert.equal(await second.text(), 'remote-1');
+		assert.equal(fetchCount, 1);
+	});
+
 	await t.test('should fall back to local login HTML when fetch fails', async () => {
 		const failingFetch = async () => { throw new Error('network down'); };
 		const response = await 获取Pages页面或本地兜底('/login', 生成本地登录页HTML('example.com'), 200, failingFetch);
@@ -162,6 +175,60 @@ test('管理页请求应避开反代策略热路径 (Admin Path Proxy Strategy B
 		const response = await worker.fetch(new Request('https://et.example/login'), env, { waitUntil() {} });
 		assert.equal(response.status, 200);
 		assert.ok(!m.getCalls.includes('ADD.txt'));
+	});
+
+	await t.test('GET /admin/config.json?safe=1 should return masked config snapshot', async () => {
+		const m = createKvMock({
+			'config.json': JSON.stringify({
+				HOST: 'et.example',
+				UUID: '90cd4a77-141a-43c9-991b-08263cfe9c10',
+				优选订阅生成: { TOKEN: 'sensitive-token' },
+				TG: { 启用: true, BotToken: 'bot-secret-token', ChatID: '123456' },
+				CF: { Email: 'ops@example.com', GlobalAPIKey: 'global-key', AccountID: 'account-id', APIToken: 'api-token', UsageAPI: 'https://usage.example', Usage: { success: false } },
+				订阅转换配置: { SUBAPI: 'https://subapi.example', SUBCONFIG: 'https://cfg.example', SUBEMOJI: false },
+				反代: { auto: 'auto', SOCKS5: { 启用: null, 全局: false, 账号: 'user:pass', 白名单: [] }, 路径模板: { auto: 'proxyip={{IP:PORT}}', SOCKS5: { 全局: 'socks5://{{IP:PORT}}', 标准: 'socks5={{IP:PORT}}' }, HTTP: { 全局: 'http://{{IP:PORT}}', 标准: 'http={{IP:PORT}}' } } },
+				SS: { 加密方式: 'aes-128-gcm', TLS: true },
+			}),
+		});
+		const env = { KEY: 'k', ADMIN: 'admin', KV: m.kv };
+		const ip = '203.0.113.11';
+		const ua = 'UA/1.0';
+		const raw = new Request('https://et.example/admin/config.json?safe=1', {
+			headers: { 'CF-Connecting-IP': ip, 'User-Agent': ua },
+		});
+		const req = new Proxy(raw, {
+			get(target, prop, receiver) {
+				if (prop === 'cf') return { colo: 'TST', asn: 13335 };
+				return Reflect.get(target, prop, receiver);
+			},
+		});
+		const cookie = await 管理员会话Cookie值(req, env, ua, 'k', 'admin', ip);
+		const authed = new Proxy(new Request('https://et.example/admin/config.json?safe=1', {
+			headers: { 'CF-Connecting-IP': ip, 'User-Agent': ua, 'Cookie': `auth=${cookie}` },
+		}), {
+			get(target, prop, receiver) {
+				if (prop === 'cf') return { colo: 'TST', asn: 13335 };
+				return Reflect.get(target, prop, receiver);
+			},
+		});
+		const response = await worker.fetch(authed, env, { waitUntil() {} });
+		assert.equal(response.status, 200);
+		const data = await response.json();
+		assert.equal(data.UUID, '090*******************************90');
+		assert.notEqual(data.优选订阅生成.TOKEN, 'sensitive-token');
+		assert.match(data.优选订阅生成.TOKEN, /^[a-z0-9]{3}\*+[a-z0-9]{2}$/i);
+		assert.notEqual(data.TG.BotToken, 'bot-token');
+		if (typeof data.TG.BotToken === 'string') {
+			assert.match(data.TG.BotToken, /^[a-z0-9]{3}\*+[a-z0-9]{2}$/i);
+		}
+		assert.notEqual(data.CF.GlobalAPIKey, 'global-key');
+		if (typeof data.CF.GlobalAPIKey === 'string') {
+			assert.match(data.CF.GlobalAPIKey, /^[a-z0-9]{3}\*+[a-z0-9]{2}$/i);
+		}
+		assert.notEqual(data.CF.APIToken, 'api-token');
+		if (typeof data.CF.APIToken === 'string') {
+			assert.match(data.CF.APIToken, /^[a-z0-9]{3}\*+[a-z0-9]{2}$/i);
+		}
 	});
 });
 
@@ -245,6 +312,18 @@ test('反代策略选择 (ProxyIP Policy)', async (t) => {
 		清理自动反代池缓存();
 		const lax = await 选择反代策略(env, { host: 'example.com', colo: 'LAX' });
 		assert.notEqual(hkg.反代IP, lax.反代IP);
+	});
+
+	await t.test('should reuse parsed ADD.txt across shard keys within ttl', async () => {
+		清理自动反代池缓存();
+		清理自动反代健康缓存();
+		const m = createKvMock({
+			'ADD.txt': '198.51.100.1:443\n198.51.100.2:443\n198.51.100.3:443\n198.51.100.4:443'
+		});
+		const env = { KV: m.kv, AUTO_PROXY_POOL_SIZE: '4' };
+		await 选择反代策略(env, { host: 'example.com', colo: 'HKG' });
+		await 选择反代策略(env, { host: 'example.com', colo: 'LAX' });
+		assert.equal(m.getCalls.filter((k) => k === 'ADD.txt').length, 1);
 	});
 
 	await t.test('should promote healthy candidates and demote failing candidates', async () => {
@@ -432,6 +511,8 @@ test('生成自动反代诊断建议 (Automatic Proxy Advice)', () => {
 
 test('读取config_JSON contract split (Base Config / Admin Extensions)', async (t) => {
 	await t.test('should keep base config loading on config.json only', async () => {
+		清理基础配置缓存();
+		清理配置缓存();
 		const m = createKvMock({});
 		const result = await 读取config_JSON({ KV: m.kv }, 'example.com', 'uuid-123', 'UA/1.0', false, false);
 		assert.deepEqual(m.getCalls, ['config.json']);
@@ -445,6 +526,7 @@ test('读取config_JSON contract split (Base Config / Admin Extensions)', async 
 
 	await t.test('should load tg.json and cf.json only when admin extensions are requested', async () => {
 		清理基础配置缓存();
+		清理配置缓存();
 		const m = createKvMock({
 			'tg.json': JSON.stringify({ BotToken: 'bot-secret', ChatID: 'chat-id' }),
 			'cf.json': JSON.stringify({ UsageAPI: 'https://example.com/usage' }),
@@ -985,4 +1067,24 @@ test('远程订阅转换默认关闭 (Remote Subconvert Hardening)', async (t) =
 			global.fetch = originalFetch;
 		}
 	});
+
+	await t.test('should not read ADD.txt when /sub token is invalid', async () => {
+		清理基础配置缓存();
+		清理配置缓存();
+		清理自动反代池缓存();
+		const m = createKvMock({ 'ADD.txt': '198.51.100.1:443' });
+		const base = new Request('https://et.example/sub?target=clash&token=invalid', {
+			headers: { 'User-Agent': 'ClashMeta/1.0', 'CF-Connecting-IP': '198.51.100.41' },
+		});
+		const request = new Proxy(base, {
+			get(target, prop, receiver) {
+				if (prop === 'cf') return { colo: 'TST', asn: 13335, asOrganization: 'Test ASN', country: 'US', city: 'Testville' };
+				return Reflect.get(target, prop, receiver);
+			},
+		});
+		const response = await worker.fetch(request, { KEY: 'k', ADMIN: 'admin', UUID: uuid, KV: m.kv, OFF_LOG: '1' }, { waitUntil() { } });
+		assert.equal(response.status, 200);
+		assert.ok(!m.getCalls.includes('ADD.txt'));
+	});
+
 });

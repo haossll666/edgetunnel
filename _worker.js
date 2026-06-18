@@ -16,8 +16,13 @@ const TG配置缓存 = new Map();
 const CF配置缓存 = new Map();
 const 基础配置缓存 = new Map();
 const 自动反代池缓存 = new Map();
+const 自动反代候选源缓存 = new Map();
 const 自动反代健康缓存 = new Map();
+const Pages远程缓存 = new Map();
 const 自动反代健康过期毫秒 = 10 * 60 * 1000;
+const 自动反代候选源缓存毫秒 = 60 * 1000;
+const Pages远程缓存成功毫秒 = 60 * 1000;
+const Pages远程缓存失败毫秒 = 30 * 1000;
 const 自动反代健康衰减间隔毫秒 = 2 * 60 * 1000;
 const 自动反代健康冷却毫秒 = 30 * 1000;
 const 自动反代允许端口 = new Set([80, 443, 2052, 2053, 2082, 2083, 2086, 2087, 2095, 2096, 8080, 8443, 8880]);
@@ -255,7 +260,9 @@ export default {
 							}
 						} else return new Response(JSON.stringify({ error: '不支持的POST请求路径' }), { status: 404, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 					} else if (访问路径 === 'admin/config.json') {// 处理 admin/config.json 请求，返回JSON
-						return new Response(JSON.stringify(config_JSON, null, 2), { status: 200, headers: { 'Content-Type': 'application/json' } });
+						const safeMode = ['1', 'true'].includes(String(url.searchParams.get('safe') || '').toLowerCase());
+						const 输出配置 = safeMode ? 生成安全配置快照(config_JSON) : config_JSON;
+						return new Response(JSON.stringify(输出配置, null, 2), { status: 200, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 					} else if (访问路径 === 'admin/diagnostics') {// 只读诊断视图
 						return new Response(JSON.stringify(生成管理诊断视图(url, config_JSON, env), null, 2), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8', 'Cache-Control': 'no-store' } });
 					} else if (区分大小写访问路径 === 'admin/ADD.txt') {// 处理 admin/ADD.txt 请求，返回本地优选IP
@@ -273,9 +280,9 @@ export default {
 					响应.headers.set('Set-Cookie', 'auth=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict; Secure');
 					return 响应;
 				} else if (访问路径 === 'sub') {//处理订阅请求
-					await 确保反代策略已初始化();
 					const 订阅TOKEN = await safeHash(host + userID), 作为优选订阅生成器 = ['1', 'true'].includes(env.BEST_SUB) && url.searchParams.get('host') === 'example.com' && url.searchParams.get('uuid') === '00000000-0000-4000-8000-000000000000' && UA.toLowerCase().includes('tunnel (https://github.com/cmliu/edge');
 					if (url.searchParams.get('token') === 订阅TOKEN || 作为优选订阅生成器) {
+						await 确保反代策略已初始化();
 						config_JSON = await 读取config_JSON(env, host, userID, UA, false, false);
 						if (作为优选订阅生成器) ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Get_Best_SUB', config_JSON, false));
 						else ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Get_SUB', config_JSON));
@@ -2635,15 +2642,37 @@ async function 获取Pages页面或本地兜底(路径, 本地HTML, 状态码 = 
 		},
 	});
 	if (!启用远程Pages兜底) return 本地响应();
+	const 当前时间 = Date.now();
+	const 缓存键 = 路径 || '/';
+	const 缓存项 = Pages远程缓存.get(缓存键);
+	if (缓存项 && 缓存项.过期时间 > 当前时间) {
+		if (缓存项.状态 === 'failed') return 本地响应();
+		const headers = new Headers(缓存项.headers || {});
+		headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+		headers.set('Pragma', 'no-cache');
+		headers.set('Expires', '0');
+		return new Response(缓存项.正文 || '', { status: 状态码, headers });
+	}
 	try {
 		const response = await fetchFn(Pages静态页面 + 路径);
+		const 正文 = await response.text();
 		const headers = new Headers(response.headers);
 		headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 		headers.set('Pragma', 'no-cache');
 		headers.set('Expires', '0');
-		return new Response(response.body, { status: 状态码, statusText: response.statusText, headers });
+		Pages远程缓存.set(缓存键, {
+			状态: 'ok',
+			正文,
+			headers: Object.fromEntries(headers.entries()),
+			过期时间: 当前时间 + Pages远程缓存成功毫秒,
+		});
+		return new Response(正文, { status: 状态码, statusText: response.statusText, headers });
 	} catch (error) {
 		console.error(`Pages 页面兜底失败 ${路径}: ${error.message}`);
+		Pages远程缓存.set(缓存键, {
+			状态: 'failed',
+			过期时间: 当前时间 + Pages远程缓存失败毫秒,
+		});
 		return 本地响应();
 	}
 }
@@ -3440,6 +3469,7 @@ async function 整理成数组(内容) {
 
 function 清理自动反代池缓存() {
 	自动反代池缓存.clear();
+	自动反代候选源缓存.clear();
 }
 
 function 清理自动反代健康缓存() {
@@ -3662,19 +3692,30 @@ async function 选择反代策略(env = {}, 上下文 = {}) {
 			: { 反代IP: '', 启用反代兜底: false, 来源: 'disabled' };
 	}
 
-	let 自动候选文本 = '';
+	let 安全自动候选数组 = [];
 	if (env.KV && typeof env.KV.get === 'function') {
-		try {
-			自动候选文本 = (await env.KV.get('ADD.txt')) || '';
-		} catch (error) {
-			log(`[反代策略] 读取 ADD.txt 失败: ${error.message}`);
+		const 当前时间 = Date.now();
+		const 源缓存键 = 'kv:ADD.txt:raw';
+		const 源缓存项 = 自动反代候选源缓存.get(源缓存键);
+		if (源缓存项 && 源缓存项.过期时间 > 当前时间) {
+			安全自动候选数组 = [...源缓存项.候选数组];
+		} else {
+			let 自动候选文本 = '';
+			try {
+				自动候选文本 = (await env.KV.get('ADD.txt')) || '';
+			} catch (error) {
+				log(`[反代策略] 读取 ADD.txt 失败: ${error.message}`);
+			}
+			const 自动候选数组 = 自动候选文本
+				? (await 整理成数组(自动候选文本)).map(ip => ip.trim()).filter(Boolean)
+				: [];
+			安全自动候选数组 = 过滤自动反代候选(自动候选数组);
+			自动反代候选源缓存.set(源缓存键, {
+				候选数组: [...安全自动候选数组],
+				过期时间: 当前时间 + 自动反代候选源缓存毫秒,
+			});
 		}
 	}
-
-	const 自动候选数组 = 自动候选文本
-		? (await 整理成数组(自动候选文本)).map(ip => ip.trim()).filter(Boolean)
-		: [];
-	const 安全自动候选数组 = 过滤自动反代候选(自动候选数组);
 	const 自动反代池 = 规范化自动反代候选(安全自动候选数组, 自动池上限, 自动池种子, 上下文.目标站点 || '*');
 	自动反代最近候选快照 = [...安全自动候选数组];
 	if (自动反代过滤诊断) {
@@ -3693,6 +3734,33 @@ async function 选择反代策略(env = {}, 上下文 = {}) {
 		过期时间: Date.now() + 60 * 1000,
 	});
 	return { ...策略 };
+}
+
+function 生成安全配置快照(config = {}) {
+	const 快照 = typeof structuredClone === 'function'
+		? structuredClone(config)
+		: JSON.parse(JSON.stringify(config));
+	const 脱敏字段 = [
+		['UUID'],
+		['优选订阅生成', 'TOKEN'],
+		['TG', 'BotToken'],
+		['CF', 'GlobalAPIKey'],
+		['CF', 'APIToken'],
+		['CF', 'UsageAPI'],
+		['反代', 'SOCKS5', '账号'],
+	];
+	for (const 路径 of 脱敏字段) {
+		let 指针 = 快照;
+		for (let i = 0; i < 路径.length - 1; i++) {
+			指针 = 指针?.[路径[i]];
+			if (!指针 || typeof 指针 !== 'object') break;
+		}
+		const 键 = 路径[路径.length - 1];
+		if (指针 && typeof 指针 === 'object' && typeof 指针[键] === 'string') {
+			指针[键] = 掩码敏感信息(指针[键]);
+		}
+	}
+	return 快照;
 }
 
 async function 获取优选订阅生成器数据(优选订阅生成器HOST) {
