@@ -155,6 +155,16 @@ test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
 	});
 });
 
+test('管理页请求应避开反代策略热路径 (Admin Path Proxy Strategy Bypass)', async (t) => {
+	await t.test('GET /login should not read KV ADD.txt', async () => {
+		const m = createKvMock({ 'ADD.txt': '198.51.100.1:443' });
+		const env = { KEY: 'k', ADMIN: 'admin', KV: m.kv };
+		const response = await worker.fetch(new Request('https://et.example/login'), env, { waitUntil() {} });
+		assert.equal(response.status, 200);
+		assert.ok(!m.getCalls.includes('ADD.txt'));
+	});
+});
+
 test('反代策略选择 (ProxyIP Policy)', async (t) => {
 	await t.test('should prefer env.PROXYIP over automatic pool', async () => {
 		清理自动反代池缓存();

@@ -46,26 +46,33 @@ export default {
 		const 访问路径 = url.pathname.slice(1).toLowerCase();
 		调试日志打印 = ['1', 'true'].includes(env.DEBUG) || 调试日志打印;
 		const 启用远程Pages兜底 = ['1', 'true'].includes(String(env.PAGES_REMOTE || '').toLowerCase());
-		const 反代策略 = await 选择反代策略(env, { host, colo: request.cf?.colo || '' });
-		反代IP = 反代策略.反代IP;
-		启用反代兜底 = 反代策略.启用反代兜底;
-		当前自动反代策略 = 反代策略.来源 === 'kv.ADD.txt'
-			? {
-				候选数组: 反代策略.候选数组 || [],
-				候选集合: new Set((反代策略.候选数组 || []).map(ip => ip.trim()).filter(Boolean)),
-				上限: 反代策略.自动池上限 || 8,
-				基础种子: 反代策略.自动池种子 || ''
-			}
-			: null;
+		let 反代策略已初始化 = false;
+		const 确保反代策略已初始化 = async () => {
+			if (反代策略已初始化) return;
+			const 反代策略 = await 选择反代策略(env, { host, colo: request.cf?.colo || '' });
+			反代IP = 反代策略.反代IP;
+			启用反代兜底 = 反代策略.启用反代兜底;
+			当前自动反代策略 = 反代策略.来源 === 'kv.ADD.txt'
+				? {
+					候选数组: 反代策略.候选数组 || [],
+					候选集合: new Set((反代策略.候选数组 || []).map(ip => ip.trim()).filter(Boolean)),
+					上限: 反代策略.自动池上限 || 8,
+					基础种子: 反代策略.自动池种子 || ''
+				}
+				: null;
+			反代策略已初始化 = true;
+		};
 		const 访问IP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Real-IP') || request.headers.get('X-Forwarded-For') || request.headers.get('True-Client-IP') || request.headers.get('Fly-Client-IP') || request.headers.get('X-Appengine-Remote-Addr') || request.headers.get('X-Cluster-Client-IP') || request.cf?.clientTcpRtt || '未知IP';
 		if (env.GO2SOCKS5) SOCKS5白名单 = await 整理成数组(env.GO2SOCKS5);
 		if (访问路径 === 'version' && url.searchParams.get('uuid') === userID) {// 版本信息接口
 			return new Response(JSON.stringify({ Version: Number(String(Version).replace(/\D+/g, '')) }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 		} else if (管理员密码 && upgradeHeader === 'websocket') {// WebSocket代理
+			await 确保反代策略已初始化();
 			await 反代参数获取(url);
 			log(`[WebSocket] 命中请求: ${url.pathname}${url.search}`);
 			return await 处理WS请求(request, userID, url);
 		} else if (管理员密码 && !访问路径.startsWith('admin/') && 访问路径 !== 'login' && request.method === 'POST') {// gRPC/XHTTP代理
+			await 确保反代策略已初始化();
 			await 反代参数获取(url);
 			const referer = request.headers.get('Referer') || '';
 			const 命中XHTTP特征 = referer.includes('x_padding', 14) || referer.includes('x_padding=');
@@ -266,6 +273,7 @@ export default {
 					响应.headers.set('Set-Cookie', 'auth=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict; Secure');
 					return 响应;
 				} else if (访问路径 === 'sub') {//处理订阅请求
+					await 确保反代策略已初始化();
 					const 订阅TOKEN = await safeHash(host + userID), 作为优选订阅生成器 = ['1', 'true'].includes(env.BEST_SUB) && url.searchParams.get('host') === 'example.com' && url.searchParams.get('uuid') === '00000000-0000-4000-8000-000000000000' && UA.toLowerCase().includes('tunnel (https://github.com/cmliu/edge');
 					if (url.searchParams.get('token') === 订阅TOKEN || 作为优选订阅生成器) {
 						config_JSON = await 读取config_JSON(env, host, userID, UA, false, false);
