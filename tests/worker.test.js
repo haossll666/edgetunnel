@@ -110,9 +110,17 @@ test('是否跳过Get_SUB日志KV写入 (Skip Get_SUB Log KV Writes)', async (t)
 });
 
 test('Pages fallback helpers (Admin Login / noADMIN / noKV)', async (t) => {
-	await t.test('should return remote response when fetch succeeds', async () => {
+	await t.test('should prefer local fallback by default even when remote fetch succeeds', async () => {
 		const remoteFetch = async () => new Response('remote login', { status: 200, headers: { 'X-Test': '1' } });
 		const response = await 获取Pages页面或本地兜底('/login', '<html>fallback</html>', 200, remoteFetch);
+		assert.equal(response.status, 200);
+		assert.equal(await response.text(), '<html>fallback</html>');
+		assert.equal(response.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
+	});
+
+	await t.test('should allow remote page fetch when explicitly enabled', async () => {
+		const remoteFetch = async () => new Response('remote login', { status: 200, headers: { 'X-Test': '1' } });
+		const response = await 获取Pages页面或本地兜底('/login', '<html>fallback</html>', 200, remoteFetch, true);
 		assert.equal(response.status, 200);
 		assert.equal(await response.text(), 'remote login');
 		assert.equal(response.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');

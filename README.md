@@ -130,6 +130,7 @@
 | **GO2SOCKS5** | ❌ | `blog.cmliussss.com`,`*.ip111.cn`,`*google.com` | 强制走 SOCKS5 的名单 (`*` 为全局，域名用逗号分隔) |
 | **DEBUG** | ❌ | `1`或`true` | **开发者模式**，默认关闭调试日志功能（console.log），设置`1`或`true`则开启调试日志功能 |
 | **OFF_LOG** | ❌ | `1`或`true` | 默认开启日志记录功能。个人免费层部署如果不需要常驻审计，建议直接设为 `1`，只在需要保留审计轨迹时再关闭它 |
+| **PAGES_REMOTE** | ❌ | `1`或`true` | 默认使用内置本地登录/管理页兜底，降低外部 Pages 异常对可用性的影响；仅在你确认远程静态页可用时再设为 `1` 启用远程 Pages |
 | **ADMIN_IP_BIND** | ❌ | `relaxed` | 管理后台 Cookie 与客户端网络绑定：`off` 不绑定（与旧版哈希一致）；`relaxed`（默认）校验同一 `ASN`；`strict` 校验 IPv4 `/24` 或 IPv6 `/64` 前缀。漫游/CGNAT 场景可设 `off` |
 | **BEST_SUB** | ❌ | `1`或`true` | 默认关闭作为**优选订阅生成器**的功能，设置`1`或`true`则开启该功能 |
 | **REMOTE_SUBCONVERT** | ❌ | `1`或`true` | 默认关闭远程订阅转换。只有在你使用可信自建 SUBAPI，或明确接受公共转换服务会看到订阅入口 token 时再开启 |

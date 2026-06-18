@@ -1,9 +1,6 @@
 const Version = '2026-04-10 06:03:17';
 const WorkerGitDescribe = 'GIT_DESCRIBE_NOT_SET';
-/*In our project workflow, we first*/ import //the necessary modules, 
-/*then*/ { connect }//to the central server, 
-/*and all data flows*/ from//this single source.
-	'cloudflare\u003asockets';
+import { connect } from 'cloudflare:sockets';
 let config_JSON, 反代IP = '', 启用SOCKS5反代 = null, 启用SOCKS5全局反代 = false, 我的SOCKS5账号 = '', parsedSocks5Address = {};
 let 缓存反代IP, 缓存反代解析数组, 缓存反代数组索引 = 0, 启用反代兜底 = true, 调试日志打印 = false;
 let 当前自动反代策略 = null;
@@ -48,6 +45,7 @@ export default {
 		const host = hosts[0];
 		const 访问路径 = url.pathname.slice(1).toLowerCase();
 		调试日志打印 = ['1', 'true'].includes(env.DEBUG) || 调试日志打印;
+		const 启用远程Pages兜底 = ['1', 'true'].includes(String(env.PAGES_REMOTE || '').toLowerCase());
 		const 反代策略 = await 选择反代策略(env, { host, colo: request.cf?.colo || '' });
 		反代IP = 反代策略.反代IP;
 		启用反代兜底 = 反代策略.启用反代兜底;
@@ -79,7 +77,7 @@ export default {
 			return await 处理XHTTP请求(request, userID);
 		} else {
 			if (url.protocol === 'http:') return Response.redirect(url.href.replace(`http://${url.hostname}`, `https://${url.hostname}`), 301);
-			if (!管理员密码) return await 获取Pages页面或本地兜底('/noADMIN', 生成本地NoADMIN页HTML(url.host), 404);
+			if (!管理员密码) return await 获取Pages页面或本地兜底('/noADMIN', 生成本地NoADMIN页HTML(url.host), 404, fetch, 启用远程Pages兜底);
 			if (env.KV && typeof env.KV.get === 'function') {
 				const 区分大小写访问路径 = url.pathname.slice(1);
 				if (区分大小写访问路径 === 加密秘钥) {//快速订阅
@@ -106,7 +104,7 @@ export default {
 						}
 						return await 登录退避_密码错误响应(env, 访问IP);
 					}
-					return await 获取Pages页面或本地兜底('/login', 生成本地登录页HTML(url.host), 200);
+					return await 获取Pages页面或本地兜底('/login', 生成本地登录页HTML(url.host), 200, fetch, 启用远程Pages兜底);
 				} else if (访问路径 === 'admin' || 访问路径.startsWith('admin/')) {//验证cookie后响应管理页面
 					const cookies = request.headers.get('Cookie') || '';
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
@@ -262,7 +260,7 @@ export default {
 					}
 
 					ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Admin_Login', config_JSON));
-					return await 获取Pages页面或本地兜底('/admin' + url.search, 生成本地Admin页HTML(url.host), 200);
+					return await 获取Pages页面或本地兜底('/admin' + url.search, 生成本地Admin页HTML(url.host), 200, fetch, 启用远程Pages兜底);
 				} else if (访问路径 === 'logout' || uuidRegex.test(访问路径)) {//清除cookie并跳转到登录页面
 					const 响应 = new Response('重定向中...', { status: 302, headers: { 'Location': '/login' } });
 					响应.headers.set('Set-Cookie', 'auth=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict; Secure');
@@ -434,7 +432,7 @@ export default {
 					const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
 					if (authCookie && authCookie === await 管理员会话Cookie值(request, env, UA, 加密秘钥, 管理员密码, 访问IP)) return fetch(new Request('https://speed.cloudflare.com/locations', { headers: { 'Referer': 'https://speed.cloudflare.com/' } }));
 				} else if (访问路径 === 'robots.txt') return new Response('User-agent: *\nDisallow: /', { status: 200, headers: { 'Content-Type': 'text/plain; charset=UTF-8' } });
-			} else if (!envUUID) return await 获取Pages页面或本地兜底('/noKV', 生成本地NoKV页HTML(url.host), 404);
+			} else if (!envUUID) return await 获取Pages页面或本地兜底('/noKV', 生成本地NoKV页HTML(url.host), 404, fetch, 启用远程Pages兜底);
 		}
 
 		let 伪装页URL = env.URL || 'nginx';
@@ -2618,7 +2616,17 @@ function 是否跳过GetSUB日志KV写入(日志内容) {
 	}
 }
 
-async function 获取Pages页面或本地兜底(路径, 本地HTML, 状态码 = 200, fetchFn = fetch) {
+async function 获取Pages页面或本地兜底(路径, 本地HTML, 状态码 = 200, fetchFn = fetch, 启用远程Pages兜底 = false) {
+	const 本地响应 = () => new Response(本地HTML, {
+		status: 状态码,
+		headers: {
+			'Content-Type': 'text/html; charset=UTF-8',
+			'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+			'Pragma': 'no-cache',
+			'Expires': '0',
+		},
+	});
+	if (!启用远程Pages兜底) return 本地响应();
 	try {
 		const response = await fetchFn(Pages静态页面 + 路径);
 		const headers = new Headers(response.headers);
@@ -2628,15 +2636,7 @@ async function 获取Pages页面或本地兜底(路径, 本地HTML, 状态码 = 
 		return new Response(response.body, { status: 状态码, statusText: response.statusText, headers });
 	} catch (error) {
 		console.error(`Pages 页面兜底失败 ${路径}: ${error.message}`);
-		return new Response(本地HTML, {
-			status: 状态码,
-			headers: {
-				'Content-Type': 'text/html; charset=UTF-8',
-				'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-				'Pragma': 'no-cache',
-				'Expires': '0',
-			},
-		});
+		return 本地响应();
 	}
 }
 
@@ -3414,9 +3414,12 @@ async function 生成随机IP(request, count = 16, 指定端口 = -1, TLS = true
 }
 
 async function 整理成数组(内容) {
-	var 替换后的内容 = 内容.replace(/[	"'\r\n]+/g, ',').replace(/,+/g, ',');
+	if (内容 == null) return [];
+	const 原始内容 = typeof 内容 === 'string' ? 内容 : String(内容);
+	var 替换后的内容 = 原始内容.replace(/[	"'\r\n]+/g, ',').replace(/,+/g, ',');
 	if (替换后的内容.charAt(0) == ',') 替换后的内容 = 替换后的内容.slice(1);
 	if (替换后的内容.charAt(替换后的内容.length - 1) == ',') 替换后的内容 = 替换后的内容.slice(0, 替换后的内容.length - 1);
+	if (!替换后的内容) return [];
 	const 地址数组 = 替换后的内容.split(',');
 	return 地址数组;
 }
