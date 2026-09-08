@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议 } from '../_worker.js';
+import worker, { 掩码敏感信息, 是否启用日志记录, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_测试重置内存, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_当日KV写次数, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议, 生成订阅转换临时Token } from '../_worker.js';
 import { createKvMock } from './_kv-mock.mjs';
 
 test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
@@ -34,7 +34,7 @@ test('管理员会话 Cookie — IP/ASN 绑定 (C1)', async (t) => {
 			return new Proxy(base, {
 				get(target, prop, receiver) {
 					if (prop === 'cf') return { asn: 13335 };
-					return Reflect.get(target, prop, receiver);
+					return Reflect.get(target, prop, target);
 				},
 			});
 		};
@@ -199,7 +199,7 @@ test('管理页请求应避开反代策略热路径 (Admin Path Proxy Strategy B
 		const req = new Proxy(raw, {
 			get(target, prop, receiver) {
 				if (prop === 'cf') return { colo: 'TST', asn: 13335 };
-				return Reflect.get(target, prop, receiver);
+				return Reflect.get(target, prop, target);
 			},
 		});
 		const cookie = await 管理员会话Cookie值(req, env, ua, 'k', 'admin', ip);
@@ -208,7 +208,7 @@ test('管理页请求应避开反代策略热路径 (Admin Path Proxy Strategy B
 		}), {
 			get(target, prop, receiver) {
 				if (prop === 'cf') return { colo: 'TST', asn: 13335 };
-				return Reflect.get(target, prop, receiver);
+				return Reflect.get(target, prop, target);
 			},
 		});
 		const response = await worker.fetch(authed, env, { waitUntil() {} });
@@ -867,7 +867,7 @@ test('请求日志记录 — KV 写入 log.json (D3)', async (t) => {
 		const request = new Proxy(base, {
 			get(target, prop, receiver) {
 				if (prop === 'cf') return { asn: 13335, asOrganization: 'TestNet', country: 'US', city: 'Test' };
-				return Reflect.get(target, prop, receiver);
+				return Reflect.get(target, prop, target);
 			},
 		});
 		const config_JSON = {
@@ -896,7 +896,8 @@ test('C2 — 登录失败指数退避（KV 仅状态跃迁 + 日写熔断）', a
 		return new Proxy(base, {
 			get(target, prop, receiver) {
 				if (prop === 'cf') return { colo: 'TST', asn: 13335 };
-				return Reflect.get(target, prop, receiver);
+				const val = Reflect.get(target, prop, target);
+				return typeof val === 'function' ? val.bind(target) : val;
 			},
 		});
 	};
@@ -986,7 +987,7 @@ test('远程订阅转换默认关闭 (Remote Subconvert Hardening)', async (t) =
 		return new Proxy(base, {
 			get(target, prop, receiver) {
 				if (prop === 'cf') return { colo: 'TST', asn: 13335, asOrganization: 'Test ASN', country: 'US', city: 'Testville' };
-				return Reflect.get(target, prop, receiver);
+				return Reflect.get(target, prop, target);
 			},
 		});
 	};
@@ -1068,6 +1069,53 @@ test('远程订阅转换默认关闭 (Remote Subconvert Hardening)', async (t) =
 		}
 	});
 
+	await t.test('should send ephemeral token instead of stable token to SUBAPI', async () => {
+		清理基础配置缓存();
+		清理配置缓存();
+		const { kv } = createKvMock({ 'config.json': JSON.stringify(configJson) });
+		const stableToken = await tokenFor('et.example');
+		const todayEphemeral = await 生成订阅转换临时Token(stableToken, uuid, 0);
+		const calls = [];
+		const originalFetch = global.fetch;
+		global.fetch = async (input) => {
+			calls.push(String(input));
+			return new Response('proxies: []', { status: 200 });
+		};
+		try {
+			const response = await worker.fetch(await makeRequest(), { KEY: 'k', ADMIN: 'admin', UUID: uuid, KV: kv, OFF_LOG: '1', REMOTE_SUBCONVERT: '1' }, { waitUntil() { } });
+			assert.equal(response.status, 200);
+			assert.equal(calls.length, 1);
+			assert.ok(!calls[0].includes(stableToken), 'SUBAPI URL must not leak permanent subscription token');
+			assert.ok(calls[0].includes(encodeURIComponent(todayEphemeral)), 'SUBAPI URL must use today ephemeral token');
+		} finally {
+			global.fetch = originalFetch;
+		}
+	});
+
+	await t.test('should accept ephemeral token but not leak UUID to subconverter', async () => {
+		清理基础配置缓存();
+		清理配置缓存();
+		const { kv } = createKvMock({ 'config.json': JSON.stringify(configJson) });
+		const stableToken = await tokenFor('et.example');
+		const todayEphemeral = await 生成订阅转换临时Token(stableToken, uuid, 0);
+		const rawReq = new Request(`https://et.example/sub?target=mixed&token=${todayEphemeral}`, {
+			headers: { 'User-Agent': 'Subconverter/0.7.2', 'CF-Connecting-IP': '198.51.100.55' },
+		});
+		const subconverterReq = new Proxy(rawReq, {
+			get(target, prop) {
+				if (prop === 'cf') return { colo: 'TST', asn: 13335, asOrganization: 'Test ASN', country: 'US', city: 'Testville' };
+				const val = Reflect.get(target, prop, target);
+				return typeof val === 'function' ? val.bind(target) : val;
+			},
+		});
+		const response = await worker.fetch(subconverterReq, { KEY: 'k', ADMIN: 'admin', UUID: uuid, KV: kv, OFF_LOG: '1' }, { waitUntil() { } });
+		assert.equal(response.status, 200);
+		const body = await response.text();
+		const decoded = atob(body);
+		assert.ok(decoded.includes('00000000-0000-4000-8000-000000000000'), 'Should retain template UUID for subconverter');
+		assert.ok(!decoded.includes(uuid), 'Must not leak real UUID to subconverter');
+	});
+
 	await t.test('should not read ADD.txt when /sub token is invalid', async () => {
 		清理基础配置缓存();
 		清理配置缓存();
@@ -1079,7 +1127,7 @@ test('远程订阅转换默认关闭 (Remote Subconvert Hardening)', async (t) =
 		const request = new Proxy(base, {
 			get(target, prop, receiver) {
 				if (prop === 'cf') return { colo: 'TST', asn: 13335, asOrganization: 'Test ASN', country: 'US', city: 'Testville' };
-				return Reflect.get(target, prop, receiver);
+				return Reflect.get(target, prop, target);
 			},
 		});
 		const response = await worker.fetch(request, { KEY: 'k', ADMIN: 'admin', UUID: uuid, KV: m.kv, OFF_LOG: '1' }, { waitUntil() { } });
@@ -1088,3 +1136,45 @@ test('远程订阅转换默认关闭 (Remote Subconvert Hardening)', async (t) =
 	});
 
 });
+
+test('ALPN 支持与 Xray-core 协议兼容性规范化', async (t) => {
+	const uuid = '09000000-0000-4000-8000-000000000090';
+
+	await t.test('未配置 ALPN 时保持空值，LINK 不包含 alpn 参数（100% 字节契约兼容）', async () => {
+		清理基础配置缓存();
+		清理配置缓存();
+		const env = { KEY: 'test-key', ADMIN: 'admin-pw' };
+		const cfg = await 读取config_JSON(env, 'et.example', uuid);
+		assert.equal(cfg.ALPN, '');
+		assert.ok(!cfg.LINK.includes('alpn='));
+	});
+
+	await t.test('配置 env.ALPN 时正确传递并在 LINK 中追加参数', async () => {
+		清理基础配置缓存();
+		清理配置缓存();
+		const env = { KEY: 'test-key', ADMIN: 'admin-pw', ALPN: 'h2,http/1.1' };
+		const cfg = await 读取config_JSON(env, 'et.example', uuid);
+		assert.equal(cfg.ALPN, 'h2,http/1.1');
+		assert.ok(cfg.LINK.includes('alpn=h2%2Chttp%2F1.1'));
+	});
+
+	await t.test('规范化跳过证书验证参数：保留 insecure=1 并彻底清理已弃用的 allowInsecure=1', async () => {
+		清理基础配置缓存();
+		清理配置缓存();
+		const { kv } = createKvMock({
+			'config.json': JSON.stringify({
+				UUID: uuid,
+				HOST: 'et.example',
+				协议类型: 'vless',
+				跳过证书验证: true,
+				优选订阅生成: { SUBNAME: 'test' },
+			}),
+		});
+		const env = { KEY: 'test-key', ADMIN: 'admin-pw', KV: kv };
+		const cfg = await 读取config_JSON(env, 'et.example', uuid);
+		assert.equal(cfg.跳过证书验证, true);
+		assert.ok(cfg.LINK.includes('insecure=1'), 'LINK should contain standard insecure=1');
+		assert.ok(!cfg.LINK.includes('allowInsecure=1'), 'LINK must not contain deprecated allowInsecure=1');
+	});
+});
+

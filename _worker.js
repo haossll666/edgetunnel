@@ -31,7 +31,7 @@ let 自动反代最近候选快照 = [];
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
-export { 掩码敏感信息, 是否启用日志记录, 是否允许远程订阅转换, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议 };
+export { 掩码敏感信息, 是否启用日志记录, 是否允许远程订阅转换, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议, 生成订阅转换临时Token };
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
@@ -281,7 +281,14 @@ export default {
 					return 响应;
 				} else if (访问路径 === 'sub') {//处理订阅请求
 					const 订阅TOKEN = await safeHash(host + userID), 作为优选订阅生成器 = ['1', 'true'].includes(env.BEST_SUB) && url.searchParams.get('host') === 'example.com' && url.searchParams.get('uuid') === '00000000-0000-4000-8000-000000000000' && UA.toLowerCase().includes('tunnel (https://github.com/cmliu/edge');
-					if (url.searchParams.get('token') === 订阅TOKEN || 作为优选订阅生成器) {
+					const 请求TOKEN = url.searchParams.get('token');
+					const 用户客户端请求订阅 = 请求TOKEN === 订阅TOKEN;
+					const [今日订阅转换后端专属TOKEN, 昨日订阅转换后端专属TOKEN] = await Promise.all([
+						生成订阅转换临时Token(订阅TOKEN, userID, 0),
+						生成订阅转换临时Token(订阅TOKEN, userID, -1),
+					]);
+					const 订阅转换后端请求订阅 = 请求TOKEN === 今日订阅转换后端专属TOKEN || 请求TOKEN === 昨日订阅转换后端专属TOKEN;
+					if (用户客户端请求订阅 || 订阅转换后端请求订阅 || 作为优选订阅生成器) {
 						await 确保反代策略已初始化();
 						config_JSON = await 读取config_JSON(env, host, userID, UA, false, false);
 						if (作为优选订阅生成器) ctx.waitUntil(请求日志记录(env, request, 访问IP, 'Get_Best_SUB', config_JSON, false));
@@ -328,7 +335,7 @@ export default {
 						if (订阅类型 === 'mixed') {
 							const TLS分片参数 = config_JSON.TLS分片 == 'Shadowrocket' ? `&fragment=${encodeURIComponent('1,40-60,30-50,tlshello')}` : config_JSON.TLS分片 == 'Happ' ? `&fragment=${encodeURIComponent('3,1,tlshello')}` : '';
 							let 完整优选IP = [], 其他节点LINK = '', 反代IP池 = [];
-							const 稳定首项 = 生成订阅稳定首项(config_JSON);
+							const 稳定首项 = 生成订阅稳定首项(config_JSON, !用户客户端请求订阅);
 
 							if (!url.searchParams.has('sub') && config_JSON.优选订阅生成.local) { // 本地生成订阅
 								const 完整优选列表 = config_JSON.优选订阅生成.本地IP库.随机IP ? (
@@ -407,7 +414,8 @@ export default {
 									return `${协议类型}://${btoa(config_JSON.SS.加密方式 + ':00000000-0000-4000-8000-000000000000')}@${节点地址}:${节点端口}?plugin=v2${encodeURIComponent('ray-plugin;mode=websocket;host=example.com;path=' + (config_JSON.随机路径 ? 随机路径(完整节点路径) : 完整节点路径) + (config_JSON.SS.TLS ? ';tls' : '')) + ECHLINK参数 + TLS分片参数}#${encodeURIComponent(节点备注)}`;
 								} else {
 									const 传输路径参数值 = 获取传输路径参数值(config_JSON, 完整节点路径, 作为优选订阅生成器);
-									return `${协议类型}://00000000-0000-4000-8000-000000000000@${节点地址}:${节点端口}?security=tls&type=${传输协议 + ECHLINK参数}&${域名字段名}=example.com&fp=${config_JSON.Fingerprint}&sni=example.com&${路径字段名}=${encodeURIComponent(传输路径参数值) + TLS分片参数}&encryption=none${config_JSON.跳过证书验证 ? '&insecure=1&allowInsecure=1' : ''}#${encodeURIComponent(节点备注)}`;
+									const alpn参数 = config_JSON.ALPN ? `&alpn=${encodeURIComponent(config_JSON.ALPN)}` : '';
+									return `${协议类型}://00000000-0000-4000-8000-000000000000@${节点地址}:${节点端口}?security=tls&type=${传输协议 + ECHLINK参数}&${域名字段名}=example.com&fp=${config_JSON.Fingerprint}&sni=example.com&${路径字段名}=${encodeURIComponent(传输路径参数值) + TLS分片参数}&encryption=none${alpn参数}${config_JSON.跳过证书验证 ? '&insecure=1' : ''}#${encodeURIComponent(节点备注)}`;
 								}
 							}).filter(item => item !== null).join('\n');
 						} else { // 订阅转换
@@ -417,7 +425,7 @@ export default {
 									headers: responseHeaders,
 								});
 							}
-							const 订阅转换URL = `${config_JSON.订阅转换配置.SUBAPI}/sub?target=${订阅类型}&url=${encodeURIComponent(url.protocol + '//' + url.host + '/sub?target=mixed&token=' + 订阅TOKEN + (url.searchParams.has('sub') && url.searchParams.get('sub') != '' ? `&sub=${url.searchParams.get('sub')}` : ''))}&config=${encodeURIComponent(config_JSON.订阅转换配置.SUBCONFIG)}&emoji=${config_JSON.订阅转换配置.SUBEMOJI}&scv=${config_JSON.跳过证书验证}`;
+							const 订阅转换URL = `${config_JSON.订阅转换配置.SUBAPI}/sub?target=${订阅类型}&url=${encodeURIComponent(url.protocol + '//' + url.host + '/sub?target=mixed&token=' + 今日订阅转换后端专属TOKEN + (url.searchParams.has('sub') && url.searchParams.get('sub') != '' ? `&sub=${url.searchParams.get('sub')}` : ''))}&config=${encodeURIComponent(config_JSON.订阅转换配置.SUBCONFIG)}&emoji=${config_JSON.订阅转换配置.SUBEMOJI}&scv=${config_JSON.跳过证书验证}`;
 							try {
 								const response = await fetch(订阅转换URL, { headers: { 'User-Agent': 'Subconverter for ' + 订阅类型 + ' edge' + 'tunnel (https://github.com/cmliu/edge' + 'tunnel)' } });
 								if (response.ok) {
@@ -429,7 +437,7 @@ export default {
 							}
 						}
 
-						if (!ua.includes('subconverter') && !作为优选订阅生成器) 订阅内容 = 批量替换域名(订阅内容.replace(/00000000-0000-4000-8000-000000000000/g, config_JSON.UUID).replace(/MDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAw/g, btoa(config_JSON.UUID)), config_JSON.HOSTS);
+						if (!ua.includes('subconverter') && 用户客户端请求订阅 && !作为优选订阅生成器) 订阅内容 = 批量替换域名(订阅内容.replace(/00000000-0000-4000-8000-000000000000/g, config_JSON.UUID).replace(/MDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAw/g, btoa(config_JSON.UUID)), config_JSON.HOSTS);
 
 						if (订阅类型 === 'mixed' && (!ua.includes('mozilla') || url.searchParams.has('b64') || url.searchParams.has('base64'))) 订阅内容 = btoa(订阅内容);
 
@@ -2013,10 +2021,14 @@ function 获取传输路径参数值(配置 = {}, 节点路径 = '/', 作为优�
 	return 路径值.split('?')[0] || '/';
 }
 
-function 生成订阅稳定首项(config_JSON = {}) {
+function 生成订阅稳定首项(config_JSON = {}, maskUuid = false) {
 	if (!config_JSON?.LINK || typeof config_JSON.LINK !== 'string') return '';
-	const 稳定首项 = config_JSON.LINK.trim();
+	let 稳定首项 = config_JSON.LINK.trim();
 	if (!稳定首项) return '';
+	if (maskUuid && config_JSON.UUID) {
+		稳定首项 = 稳定首项.replace(new RegExp(config_JSON.UUID, 'gi'), '00000000-0000-4000-8000-000000000000')
+			.replace(new RegExp(btoa(config_JSON.UUID), 'gi'), 'MDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAw');
+	}
 	return 稳定首项.endsWith('\n') ? 稳定首项 : `${稳定首项}\n`;
 }
 
@@ -2452,6 +2464,11 @@ async function Singbox订阅配置文件热补丁(SingBox_原始订阅内容, co
 							enabled: true,
 							config: `-----BEGIN ECH CONFIGS-----\n${ech_config}\n-----END ECH CONFIGS-----`
 						};
+					}
+
+					// 添加/更新 alpn 配置
+					if (config_JSON?.ALPN) {
+						outbound.tls.alpn = String(config_JSON.ALPN).split(',').map(s => s.trim()).filter(Boolean);
 					}
 				}
 			});
@@ -2968,6 +2985,11 @@ async function safeHash(文本) {
 	return 十六进制.toLowerCase();
 }
 
+async function 生成订阅转换临时Token(订阅TOKEN, userID, 日偏移 = 0) {
+	const 日序号 = Math.floor(Date.now() / 86400000) + 日偏移;
+	return await safeHash(String(订阅TOKEN) + ':subconv:' + String(userID) + ':' + 日序号);
+}
+
 function 展开IPv6为完整8段(raw) {
 	let s = String(raw).replace(/^\[|\]$/g, '').trim();
 	if (!s.includes(':')) return null;
@@ -3206,12 +3228,17 @@ async function getECH(host) {
 
 async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重置配置 = false, 包含管理扩展 = false) {
 	const _p = atob("UFJPWFlJUA==");
+	const 复制配置 = (值) => {
+		if (typeof structuredClone === 'function') return structuredClone(值);
+		return JSON.parse(JSON.stringify(值));
+	};
 	const host = hostname, Ali_DoH = "https://dns.alidns.com/dns-query", ECH_SNI = "cloudflare-ech.com", 占位符 = '{{IP:PORT}}', 初始化开始时间 = performance.now(), 默认配置JSON = {
 		TIME: new Date().toISOString(),
 		HOST: host,
 		HOSTS: [hostname],
 		UUID: userID,
 		PATH: "/",
+		ALPN: "",
 		协议类型: "v" + "le" + "ss",
 		传输协议: "ws",
 		gRPC模式: "gun",
@@ -3292,17 +3319,13 @@ async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重�
 	try {
 		const 当前时间戳 = Date.now();
 		const 缓存项 = 基础配置缓存.get('config.json');
-		const 复制配置 = (值) => {
-			if (typeof structuredClone === 'function') return structuredClone(值);
-			return JSON.parse(JSON.stringify(值));
-		};
 		let 基线配置;
 		if (!重置配置 && 缓存项 && 当前时间戳 - 缓存项.TIME < 5 * 60 * 1000) {
 			基线配置 = 缓存项.值;
 		} else {
-			let configJSON = await env.KV.get('config.json');
+			let configJSON = env?.KV ? await env.KV.get('config.json') : null;
 			if (!configJSON || 重置配置 == true) {
-				await env.KV.put('config.json', JSON.stringify(默认配置JSON, null, 2));
+				if (env?.KV) await env.KV.put('config.json', JSON.stringify(默认配置JSON, null, 2));
 				基线配置 = 默认配置JSON;
 			} else {
 				基线配置 = JSON.parse(configJSON);
@@ -3331,7 +3354,10 @@ async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重�
 
 	if (!config_JSON.gRPC模式) config_JSON.gRPC模式 = 'gun';
 	if (!config_JSON.SS) config_JSON.SS = { 加密方式: "aes-128-gcm", TLS: false };
+	config_JSON.ALPN = (env.ALPN !== undefined && env.ALPN !== null) ? String(env.ALPN).trim() : (config_JSON.ALPN || "");
 
+	if (!config_JSON.反代) config_JSON.反代 = 复制配置(默认配置JSON.反代);
+	if (!config_JSON.反代.SOCKS5) config_JSON.反代.SOCKS5 = 复制配置(默认配置JSON.反代.SOCKS5);
 	if (!config_JSON.反代.路径模板?.[_p]) {
 		config_JSON.反代.路径模板 = {
 			[_p]: "proxyip=" + 占位符,
@@ -3374,15 +3400,16 @@ async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重�
 	const ECHLINK参数 = config_JSON.ECH ? `&ech=${encodeURIComponent((config_JSON.ECHConfig.SNI ? config_JSON.ECHConfig.SNI + '+' : '') + config_JSON.ECHConfig.DNS)}` : '';
 	const { type: 传输协议, 路径字段名, 域名字段名 } = 获取传输协议配置(config_JSON);
 	const 传输路径参数值 = 获取传输路径参数值(config_JSON, config_JSON.完整节点路径);
+	const alpn参数 = config_JSON.ALPN ? `&alpn=${encodeURIComponent(config_JSON.ALPN)}` : '';
 	config_JSON.LINK = config_JSON.协议类型 === 'ss'
 		? `${config_JSON.协议类型}://${btoa(config_JSON.SS.加密方式 + ':' + userID)}@${host}:${config_JSON.SS.TLS ? '443' : '80'}?plugin=v2${encodeURIComponent(`ray-plugin;mode=websocket;host=${host};path=${((config_JSON.完整节点路径.includes('?') ? config_JSON.完整节点路径.replace('?', '?enc=' + config_JSON.SS.加密方式 + '&') : (config_JSON.完整节点路径 + '?enc=' + config_JSON.SS.加密方式)) + (config_JSON.SS.TLS ? ';tls' : ''))};mux=0`) + ECHLINK参数}#${encodeURIComponent(config_JSON.优选订阅生成.SUBNAME)}`
-		: `${config_JSON.协议类型}://${userID}@${host}:443?security=tls&type=${传输协议 + ECHLINK参数}&${域名字段名}=${host}&fp=${config_JSON.Fingerprint}&sni=${host}&${路径字段名}=${encodeURIComponent(传输路径参数值) + TLS分片参数}&encryption=none${config_JSON.跳过证书验证 ? '&insecure=1&allowInsecure=1' : ''}#${encodeURIComponent(config_JSON.优选订阅生成.SUBNAME)}`;
+		: `${config_JSON.协议类型}://${userID}@${host}:443?security=tls&type=${传输协议 + ECHLINK参数}&${域名字段名}=${host}&fp=${config_JSON.Fingerprint}&sni=${host}&${路径字段名}=${encodeURIComponent(传输路径参数值) + TLS分片参数}&encryption=none${alpn参数}${config_JSON.跳过证书验证 ? '&insecure=1' : ''}#${encodeURIComponent(config_JSON.优选订阅生成.SUBNAME)}`;
 	config_JSON.优选订阅生成.TOKEN = await safeHash(hostname + userID);
 
 		const 初始化TG_JSON = { BotToken: null, ChatID: null };
-		config_JSON.TG = { 启用: config_JSON.TG.启用 ? config_JSON.TG.启用 : false, ...初始化TG_JSON };
+		config_JSON.TG = { 启用: config_JSON.TG?.启用 ? config_JSON.TG.启用 : false, ...初始化TG_JSON };
 		const 初始化CF_JSON = { Email: null, GlobalAPIKey: null, AccountID: null, APIToken: null, UsageAPI: null };
-		config_JSON.CF = { ...初始化CF_JSON, Usage: { success: false, pages: 0, workers: 0, total: 0, max: 100000 } };
+		config_JSON.CF = { ...初始化CF_JSON, Usage: { success: false, pages: 0, workers: 0, total: 0, max: 100000 }, ...(config_JSON.CF || {}) };
 
 		if (包含管理扩展) {
 			try {
