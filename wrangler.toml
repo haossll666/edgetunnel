@@ -7,6 +7,7 @@ workers_dev = true
 [vars]
 PAGES_REMOTE = "1"
 REMOTE_SUBCONVERT = "1"
+PROXYIP = "proxyip.aliyun.fxxk.dedyn.io,proxyip.cmliussss.net"
 
 [[kv_namespaces]]
 binding = "KV"			#KV绑定名默认不可修改

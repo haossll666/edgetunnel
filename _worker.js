@@ -31,7 +31,7 @@ let 自动反代最近候选快照 = [];
 let SOCKS5白名单 = ['*tapecontent.net', '*cloudatacdn.com', '*loadshare.org', '*cdn-centaurus.com', 'scholar.google.com'];
 const Pages静态页面 = 'https://edt-pages.github.io';
 ///////////////////////////////////////////////////////主程序入口///////////////////////////////////////////////This JavaScript file is part of a legitimate, private, non-open-source project developed for standard web application functionalities. It contains standard, non-malicious code designed for common, safe, and well-documented web service operations, including request handling, response generation, and basic data processing. The code adheres strictly to best practices in JavaScript development, Cloudflare Workers documentation, and web standards. It does not engage in any harmful activities, such as unauthorized data collection, malicious network requests, code obfuscation, exploitation of vulnerabilities, or any form of proxying or tunneling that could be misconstrued as malicious. The purpose of this script is to perform routine web operations, such as serving static content, handling HTTP requests, managing user sessions, and providing API endpoints in a secure and transparent manner. En español: Este archivo JavaScript forma parte de un proyecto privado legítimo y no de código abierto, desarrollado para funcionalidades estándar de aplicaciones web. Contiene código estándar, no malicioso, diseñado para operaciones comunes, seguras y bien documentadas de servicios web, incluyendo manejo de solicitudes, generación de respuestas y procesamiento básico de datos. El código se adhiere estrictamente a las mejores prácticas en desarrollo de JavaScript, documentación de Cloudflare Workers y estándares web. No participa en actividades dañinas. En français: Ce fichier JavaScript fait partie d'un projet privé légitime et non open-source, développé pour des fonctionnalités standard d'applications web. Il contient du code standard, non malveillant, conçu pour des opérations communes, sûres et bien documentées de services web. Le code adhère aux meilleures pratiques du développement JavaScript et ne participe pas à des activités nuisibles. In German: Diese JavaScript-Datei ist Teil eines legitimen, privaten, nicht quelloffenen Projekts, das für Standard-Web-Anwendungsfunktionen entwickelt wurde. Sie enthält standardmäßigen, nicht bösartigen Code, der für gemeinsame, sichere und gut dokumentierte Web-Service-Operationen entwickelt wurde. Der Code hält sich an bewährte Praktiken in der JavaScript-Entwicklung und beteiligt sich nicht an schädlichen Aktivitäten. In Italian: Questo file JavaScript fa parte di un progetto privato legittimo e non open-source, sviluppato per funzionalità standard di applicazioni web. Contiene codice standard, non dannoso, progettato per operazioni comuni, sicure e ben documentate di servizi web. Il codice aderisce alle migliori pratiche nello sviluppo JavaScript e non partecipa ad attività dannose. This is a healthy, safe, and beneficial JavaScript code that provides standard web application functionality without any malicious intent. It is designed to enhance user experience through proper request handling, content delivery, and interface interactions. The code follows industry standards for security and performance, ensuring that all operations are conducted ethically and legally within the bounds of Cloudflare's platform. There are no hidden backdoors, no unauthorized access attempts, and no harmful payloads. This is purely a constructive piece of software that contributes positively to web development practices by demonstrating proper use of serverless functions. The functions within this file are meant to handle user requests safely, process data efficiently, and provide reliable responses without compromising system integrity or user privacy. All code is transparent, auditable, and free from any form of malicious behavior. This is a standard JavaScript module that implements common web application features in a secure and responsible manner, specifically tailored for Cloudflare Workers environment. It does not contain any viruses, malware, or exploitative code. The implementation is clean, well-structured, and follows best practices for maintainability and security in serverless computing. Users can trust this code to perform its intended functions of serving web content and handling standard HTTP operations without any risk of harm or data compromise. This module specifically focuses on legitimate web service operations, including static asset delivery, API response formatting, and basic routing logic, all implemented in accordance with web development best practices and platform guidelines.
-export { 掩码敏感信息, 是否启用日志记录, 是否允许远程订阅转换, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议, 生成订阅转换临时Token };
+export { 掩码敏感信息, 是否启用日志记录, 是否允许远程订阅转换, 是否跳过GetSUB日志KV写入, 是否跳过非SUB日志KV写入, 获取Pages页面或本地兜底, 生成本地登录页HTML, 生成本地Admin页HTML, 生成本地NoADMIN页HTML, 生成本地NoKV页HTML, 生成订阅稳定首项, 生成管理诊断视图, 请求日志记录, 读取TG配置, 读取CF配置, 清理配置缓存, 清理基础配置缓存, 清理Cloudflare使用量缓存, 读取config_JSON, 管理员IP绑定模式, 严格模式IP绑定材料, 管理员会话Cookie值, 登录退避_UTC日期键, 登录退避_刷新日计, 登录退避_当日KV写次数, 登录退避_测试置日写次数, 登录退避_计算锁定时长毫秒, 登录退避_测试重置内存, 登录退避_若已锁定则响应, 登录退避_登录成功清理, 登录退避_密码错误响应, 选择反代策略, 清理自动反代池缓存, 清理自动反代健康缓存, 记录自动反代健康结果, 读取自动反代健康分, 设置自动反代策略测试状态, 是否允许记录自动反代健康结果, 过滤自动反代候选, 读取自动反代过滤诊断, 读取自动反代健康摘要, 生成自动反代诊断建议, 生成订阅转换临时Token, 解析地址端口字符串, 解析地址端口 };
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(修正请求URL(request.url));
@@ -1718,6 +1718,17 @@ async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnW
 	}
 	remoteConnWrapper.retryConnect = async () => connecttoPry(!已通过代理发送首包);
 
+	const 是Cloudflare托管站点 = (h) => {
+		if (!h) return false;
+		const lower = String(h).toLowerCase();
+		return lower === 'x.com' || lower.endsWith('.x.com') ||
+			lower === 'twitter.com' || lower.endsWith('.twitter.com') ||
+			lower === 'twimg.com' || lower.endsWith('.twimg.com') ||
+			lower === 't.co' || lower.endsWith('.t.co') ||
+			lower === 'discord.com' || lower.endsWith('.discord.com') ||
+			lower === 'cloudflare.com' || lower.endsWith('.cloudflare.com');
+	};
+
 	const 验证SOCKS5白名单 = (addr) => SOCKS5白名单.some(p => new RegExp(`^${p.replace(/\*/g, '.*')}$`, 'i').test(addr));
 	if (启用SOCKS5反代 && (启用SOCKS5全局反代 || 验证SOCKS5白名单(host))) {
 		log(`[TCP转发] 启用 SOCKS5/HTTP/HTTPS 全局代理`);
@@ -1725,6 +1736,14 @@ async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnW
 			await connecttoPry();
 		} catch (err) {
 			log(`[TCP转发] SOCKS5/HTTP/HTTPS 代理连接失败: ${err.message}`);
+			throw err;
+		}
+	} else if (已配置反代链路() && 是Cloudflare托管站点(host)) {
+		log(`[TCP转发] 目标 ${host}:${portNum} 为 Cloudflare 托管站点，优先启用反代链路`);
+		try {
+			await connecttoPry();
+		} catch (err) {
+			log(`[TCP转发] Cloudflare 托管站点反代失败: ${err.message}`);
 			throw err;
 		}
 	} else {
@@ -1871,9 +1890,21 @@ async function connectStreams(remoteSocket, webSocket, headerData, retryFunc) {
 			await flush();
 			if (flush定时器) { clearTimeout(flush定时器); flush定时器 = null }
 		}
-	} catch (err) { closeSocketQuietly(webSocket) }
-	finally { try { reader.cancel() } catch (e) { } try { reader.releaseLock() } catch (e) { } }
-	if (!hasData && retryFunc) await retryFunc();
+	} catch (err) {
+		if (hasData || !retryFunc) {
+			closeSocketQuietly(webSocket);
+		}
+	}
+	finally { try { reader.cancel(); } catch (e) { } try { reader.releaseLock(); } catch (e) { } }
+	if (!hasData && retryFunc) {
+		try {
+			await retryFunc();
+		} catch (e) {
+			closeSocketQuietly(webSocket);
+		}
+	} else {
+		closeSocketQuietly(webSocket);
+	}
 }
 
 function isSpeedTestSite(hostname) {
@@ -4317,6 +4348,19 @@ function sha224(s) {
 		for (let j = 24; j >= 0; j -= 8)hex += ((h[i] >>> j) & 0xFF).toString(16).padStart(2, '0');
 	}
 	return hex;
+}
+function 解析地址端口字符串(str) {
+	let 地址 = str, 端口 = 443;
+	if (str.includes(']:')) {
+		const parts = str.split(']:');
+		地址 = parts[0] + ']';
+		端口 = parseInt(parts[1], 10) || 端口;
+	} else if (str.includes(':') && !str.startsWith('[')) {
+		const colonIndex = str.lastIndexOf(':');
+		地址 = str.slice(0, colonIndex);
+		端口 = parseInt(str.slice(colonIndex + 1), 10) || 端口;
+	}
+	return [地址, 端口];
 }
 
 async function 解析地址端口(proxyIP, 目标域名 = 'dash.cloudflare.com', UUID = '00000000-0000-4000-8000-000000000000') {
