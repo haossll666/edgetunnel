@@ -1723,7 +1723,6 @@ async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnW
 		const lower = String(h).toLowerCase();
 		return lower === 'x.com' || lower.endsWith('.x.com') ||
 			lower === 'twitter.com' || lower.endsWith('.twitter.com') ||
-			lower === 'twimg.com' || lower.endsWith('.twimg.com') ||
 			lower === 't.co' || lower.endsWith('.t.co') ||
 			lower === 'discord.com' || lower.endsWith('.discord.com') ||
 			lower === 'cloudflare.com' || lower.endsWith('.cloudflare.com');
