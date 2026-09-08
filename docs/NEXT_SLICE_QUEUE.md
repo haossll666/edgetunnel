@@ -18,6 +18,15 @@ Goal：见 `docs/brainstorms/edgetunnel-improvement-directions-20260417-requirem
 
 ## Done
 
+### S2-2 — Cloudflare 目标站点反代直通与多区域 ProxyIP 池修复（X/Twitter 与 CF 托管站点全面可用）
+
+Status: Done — 彻底排查并解决 X (Twitter) 无法访问问题：
+1. 修复 `_worker.js` 中 `解析地址端口字符串` 函数缺失导致的 `ReferenceError`，确保反代 IP/域名解析稳健无崩溃；
+2. 修复 `connectStreams` 在无首包数据重试前过早调用 `closeSocketQuietly(webSocket)` 导致重试流无法回写客户端的 Bug；
+3. 新增 `是Cloudflare托管站点` 快速路由分支：针对 `x.com`、`twitter.com`、`twimg.com`、`t.co`、`discord.com` 等 CF 托管站点，直接跳过必然被 CF Edge RST 拒绝的直连握手，毫秒级走 ProxyIP 反代链路出站；
+4. 在 `wrangler.toml` 与远程 KV `ADD.txt` 注入多区域高可用 ProxyIP 池（`proxyip.aliyun.fxxk.dedyn.io,proxyip.cmliussss.net`），实现双重容灾；
+5. 新增反代地址解析与端口提取单测，87 项测试全绿并通过生产环境部署，实测 X (Twitter) 成功返回 `HTTP/2 200` 并完整渲染页面。
+
 ### S2-1 — 订阅临时 Token 隐私防泄漏、ALPN 支持与 Xray 规范化
 
 Status: Done — `_worker.js` 新增 `生成订阅转换临时Token()`，远程订阅转换时派发按日滚动的临时 Token 与 UUID 占位符，彻底隔绝外部 SUBAPI 获取永久 Token 与真实 UUID；新增 `ALPN` 环境变量与配置项透传（默认空值完全保持字节契约兼容）；规范化节点链接中的跳过证书验证参数（移除 Xray 弃用的 `allowInsecure=1` 并保留标准的 `insecure=1`）；修复 Node 26 下测试 Request Proxy 访问引发的私有属性异常，实现 84 项测试全部通过。
