@@ -1605,7 +1605,7 @@ async function SSAEAD解密(cryptoKey, nonceCounter, ciphertext) {
 
 async function forwardataTCP(host, portNum, rawData, ws, respHeader, remoteConnWrapper, yourUUID) {
 	log(`[TCP转发] 目标: ${host}:${portNum} | 反代IP: ${反代IP} | 反代兜底: ${启用反代兜底 ? '是' : '否'} | 反代类型: ${启用SOCKS5反代 || 'proxyip'} | 全局: ${启用SOCKS5全局反代 ? '是' : '否'}`);
-	const 连接超时毫秒 = 1000;
+	const 连接超时毫秒 = 2500;
 	let 已通过代理发送首包 = false;
 	const 已配置反代链路 = () => Boolean((反代IP && 反代IP.trim()) || 启用SOCKS5反代);
 	const 目标健康站点 = 规范化健康目标站点(host);
